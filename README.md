@@ -10,8 +10,6 @@ go get -u github.com/gocurr/streaming
 
 ## Usage
 
-### Default
-
 ```go
 package main
 
