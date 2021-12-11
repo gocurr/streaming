@@ -10,6 +10,25 @@ import (
 // cpu number
 var cpu = runtime.NumCPU()
 
+// Ranges split parts by cpu
+type Ranges []partition.Range
+
+// splitSlicer splits Slicer by cpu
+func splitSlicer(slice Slicer) Ranges {
+	if slice == nil {
+		return nil
+	}
+	return split(slice.Len())
+}
+
+// splits size by cpu
+func split(size int) Ranges {
+	if size < 1 {
+		return nil
+	}
+	return partition.RangesN(size, cpu)
+}
+
 // empty parallel
 var parallelEmpty = &ParallelStream{}
 
@@ -29,25 +48,12 @@ func ParallelOf(raw Slicer) *ParallelStream {
 	stream := Of(raw)
 	slice := stream.slice
 
-	var size int
-	if slice != nil {
-		size = slice.Len()
-	}
 	return &ParallelStream{
 		Stream: stream,
-		ranges: split(size),
+		ranges: splitSlicer(slice),
 		wg:     sync.WaitGroup{},
 		mu:     sync.Mutex{},
 	}
-}
-
-type Ranges []partition.Range
-
-func split(size int) Ranges {
-	if size < 1 {
-		return nil
-	}
-	return partition.RangesN(size, cpu)
 }
 
 // ForEach performs an action for each element of this stream
@@ -130,13 +136,9 @@ func (s *ParallelStream) Map(apply func(interface{}) interface{}) *ParallelStrea
 		}
 	}
 
-	var sliceLen int
-	if slice != nil {
-		sliceLen = slice.Len()
-	}
 	return &ParallelStream{
 		Stream: &Stream{slice: slice},
-		ranges: split(sliceLen),
+		ranges: splitSlicer(slice),
 	}
 }
 
@@ -180,13 +182,9 @@ func (s *ParallelStream) FlatMap(apply func(interface{}) Slicer) *ParallelStream
 		}
 	}
 
-	var sliceLen int
-	if slice != nil {
-		sliceLen = slice.Len()
-	}
 	return &ParallelStream{
 		Stream: &Stream{slice: slice},
-		ranges: split(sliceLen),
+		ranges: splitSlicer(slice),
 	}
 }
 
