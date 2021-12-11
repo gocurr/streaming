@@ -1,3 +1,18 @@
+# The Streaming Api For Golang
+
+`streaming` is a serial of `go` Apis that work like stream in `java`.
+
+## Download and Install
+
+```bash
+go get -u github.com/gocurr/streaming
+```
+
+## Usage
+
+### Default
+
+```go
 package main
 
 import (
@@ -5,11 +20,10 @@ import (
 	"github.com/gocurr/streaming"
 	"io/ioutil"
 	"strings"
-	"testing"
 	"time"
 )
 
-func Test_File(t *testing.T) {
+func main() {
 	bytes, err := ioutil.ReadFile("isaac.txt")
 	if err != nil {
 		return
@@ -55,3 +69,4 @@ func Test_File(t *testing.T) {
 	}
 	fmt.Printf("%v took %v\n", len(distinct), time.Since(since))
 }
+```

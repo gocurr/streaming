@@ -44,6 +44,9 @@ func ParallelOf(raw Slicer) *ParallelStream {
 type Ranges []partition.Range
 
 func split(size int) Ranges {
+	if size < 1 {
+		return nil
+	}
 	return partition.RangesN(size, cpu)
 }
 
