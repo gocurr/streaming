@@ -91,3 +91,12 @@ func Test_ParallelFilter(t *testing.T) {
 	}).Collect()
 	fmt.Printf("%v\n", slice)
 }
+
+func Test_ParallelNil(t *testing.T) {
+	p := streaming.ParallelOf(streaming.Strings{"one"})
+	pp := p.Copy()
+	e := pp.Distinct().Filter(func(i interface{}) bool {
+		return true
+	}).Top(1).Element(0)
+	fmt.Printf("%v\n", e)
+}

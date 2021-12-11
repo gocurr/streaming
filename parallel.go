@@ -30,7 +30,7 @@ func split(size int) Ranges {
 }
 
 // empty parallel
-var parallelEmpty = &ParallelStream{}
+var parallelEmpty = &ParallelStream{Stream: empty}
 
 // ParallelStream Stream holder in a parallel way
 type ParallelStream struct {
@@ -84,7 +84,7 @@ func (s *ParallelStream) ForEachOrdered(act func(interface{})) {
 // The apply function must return the same type,
 // or else it will PANIC
 func (s *ParallelStream) MapSame(apply func(interface{}) interface{}) *ParallelStream {
-	if s.slice == nil || s.slice.Len() == 0 {
+	if s.slice.Len() == 0 {
 		return parallelEmpty
 	}
 
@@ -108,7 +108,7 @@ func (s *ParallelStream) MapSame(apply func(interface{}) interface{}) *ParallelS
 // Map returns a stream consisting of the results of applying the given
 // function to the elements of this stream in a Parallel way
 func (s *ParallelStream) Map(apply func(interface{}) interface{}) *ParallelStream {
-	if s.slice == nil || s.slice.Len() == 0 {
+	if s.slice.Len() == 0 {
 		return parallelEmpty
 	}
 
@@ -148,7 +148,7 @@ func (s *ParallelStream) Map(apply func(interface{}) interface{}) *ParallelStrea
 // FlatMap returns a stream consisting of the results
 // of replacing each element of this stream
 func (s *ParallelStream) FlatMap(apply func(interface{}) Slicer) *ParallelStream {
-	if s.slice == nil || s.slice.Len() == 0 {
+	if s.slice.Len() == 0 {
 		return parallelEmpty
 	}
 
@@ -196,7 +196,7 @@ func (s *ParallelStream) FlatMap(apply func(interface{}) Slicer) *ParallelStream
 //
 // When steam is empty, Reduce returns nil, -1
 func (s *ParallelStream) Reduce(compare func(a, b interface{}) bool) interface{} {
-	if s.slice == nil || s.slice.Len() == 0 {
+	if s.slice.Len() == 0 {
 		return nil
 	}
 
@@ -236,7 +236,7 @@ func (s *ParallelStream) Reduce(compare func(a, b interface{}) bool) interface{}
 // Filter returns a stream consisting of the elements of this stream
 // that match the given predicate.
 func (s *ParallelStream) Filter(predicate func(interface{}) bool) *ParallelStream {
-	if s.slice == nil || s.slice.Len() == 0 {
+	if s.slice.Len() == 0 {
 		return parallelEmpty
 	}
 
@@ -303,7 +303,7 @@ func (s *ParallelStream) Sum(sum func(interface{}) float64) float64 {
 // Copy returns a new stream containing the elements,
 // the new stream holds a copied slice
 func (s *ParallelStream) Copy() *ParallelStream {
-	if s.slice == nil || s.slice.Len() == 0 {
+	if s.slice.Len() == 0 {
 		return parallelEmpty
 	}
 	slice := make(Slice, s.slice.Len())
@@ -322,7 +322,7 @@ func (s *ParallelStream) Copy() *ParallelStream {
 // Sorted reorders inside slice
 // For keeping the order relation of original slice, use Copy first
 func (s *ParallelStream) Sorted(less func(i, j int) bool) *ParallelStream {
-	if s.slice == nil || s.slice.Len() == 0 {
+	if s.slice.Len() == 0 {
 		return parallelEmpty
 	}
 	sort.Slice(s.slice, less)
