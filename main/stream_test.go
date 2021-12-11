@@ -257,7 +257,7 @@ func Test_Element(t *testing.T) {
 var floats = streaming.Floats{1, 2, 3, 5}
 
 func Test_Floats(t *testing.T) {
-	streaming.ParallelOf(floats).Map(func(i interface{}) interface{} {
+	streaming.ParallelOf(floats).MapSame(func(i interface{}) interface{} {
 		return i.(float64) * 10
 	}).ForEachOrdered(func(i interface{}) {
 		fmt.Printf("%v\n", i)

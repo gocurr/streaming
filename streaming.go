@@ -117,8 +117,11 @@ func (s *Stream) Skip(n int) *Stream {
 	return &Stream{slice: slice}
 }
 
-// MapSame returns a stream consisting of the results (same type)
-//// of applying the given function to the elements of this stream.
+// MapSame returns the same stream whose elements
+// are applied by the given function.
+//
+// The apply function must return the same type,
+// or else it will PANIC
 func (s *Stream) MapSame(apply func(interface{}) interface{}) *Stream {
 	if s.slice == nil || s.slice.Len() == 0 {
 		return empty

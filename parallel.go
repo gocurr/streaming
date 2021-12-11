@@ -78,8 +78,11 @@ func (s *ParallelStream) ForEachOrdered(act func(interface{})) {
 	s.Stream.ForEach(act)
 }
 
-// MapSame returns a stream consisting of the results of applying the given
-// function to the elements of this stream in a Parallel way
+// MapSame returns the same stream whose elements
+// are applied by the given function in a Parallel way.
+//
+// The apply function must return the same type,
+// or else it will PANIC
 func (s *ParallelStream) MapSame(apply func(interface{}) interface{}) *ParallelStream {
 	if s.slice == nil || s.slice.Len() == 0 {
 		return parallelEmpty
