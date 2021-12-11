@@ -1,4 +1,4 @@
-# The Streaming Api For Golang
+# The Stream Api For Golang
 
 `streaming` is a serial of `go` Apis that work like stream in `java`.
 
