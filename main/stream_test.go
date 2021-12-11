@@ -254,7 +254,7 @@ func Test_Element(t *testing.T) {
 	fmt.Printf("%v\n", s.Element(1))
 }
 
-var floats = streaming.Floats{1, 2, 3, 5}
+var floats = streaming.Floats{1, 2, 2, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 44, 5, 5, 5}
 
 func Test_Floats(t *testing.T) {
 	streaming.ParallelOf(floats).MapSame(func(i interface{}) interface{} {
@@ -262,4 +262,9 @@ func Test_Floats(t *testing.T) {
 	}).ForEachOrdered(func(i interface{}) {
 		fmt.Printf("%v\n", i)
 	})
+}
+
+func Test_TopN(t *testing.T) {
+	top := streaming.Of(floats).Top(2).Collect()
+	fmt.Printf("%v\n", top)
 }

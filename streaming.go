@@ -1,6 +1,7 @@
 package streaming
 
 import (
+	"container/heap"
 	"sort"
 )
 
@@ -386,4 +387,62 @@ func (s *Stream) Sorted(less func(i, j int) bool) *Stream {
 		sort.Slice(s.slice, less)
 	}
 	return s
+}
+
+// countVal count val wrapper
+type countVal struct {
+	count int
+	val   interface{}
+}
+
+// An cvHeap is a max-heap of countVals.
+type cvHeap []countVal
+
+func (h cvHeap) Len() int           { return len(h) }
+func (h cvHeap) Less(i, j int) bool { return h[i].count > h[j].count }
+func (h cvHeap) Swap(i, j int)      { h[i], h[j] = h[j], h[i] }
+
+func (h *cvHeap) Push(x interface{}) {
+	// Push and Pop use pointer receivers because they modify the slice's length,
+	// not just its contents.
+	*h = append(*h, x.(countVal))
+}
+
+func (h *cvHeap) Pop() interface{} {
+	old := *h
+	n := len(old)
+	x := old[n-1]
+	*h = old[0 : n-1]
+	return x
+}
+
+// Top returns a stream consisting of n elements that appear most often
+func (s *Stream) Top(n int) *Stream {
+	var memory = make(map[interface{}]int)
+	for i := 0; i < s.slice.Len(); i++ {
+		v := s.slice.Index(i)
+		if _, ok := memory[v]; !ok {
+			memory[v] = 1
+		} else {
+			memory[v] += 1
+		}
+	}
+	var cvs cvHeap
+	for v, count := range memory {
+		cvs = append(cvs, countVal{
+			count: count,
+			val:   v,
+		})
+	}
+
+	h := &cvs
+	heap.Init(h)
+
+	var slice Slice
+	for i := 0; i < n; i++ {
+		cv := heap.Pop(h)
+		slice = append(slice, cv.(countVal).val)
+	}
+
+	return &Stream{slice: slice}
 }
