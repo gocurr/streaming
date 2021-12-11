@@ -118,8 +118,8 @@ func (s *ParallelStream) Map(apply func(interface{}) interface{}) *ParallelStrea
 		r := r
 		go func(i int) {
 			var slice Slice
-			for i := r.From; i < r.To; i++ {
-				v := s.slice.Index(i)
+			for j := r.From; j < r.To; j++ {
+				v := s.slice.Index(j)
 				slice = append(slice, apply(v))
 			}
 
@@ -246,8 +246,8 @@ func (s *ParallelStream) Filter(predicate func(interface{}) bool) *ParallelStrea
 		r := r
 		go func(i int) {
 			var slice Slice
-			for i := r.From; i < r.To; i++ {
-				v := s.slice.Index(i)
+			for j := r.From; j < r.To; j++ {
+				v := s.slice.Index(j)
 				if predicate(v) {
 					slice = append(slice, v)
 				}
