@@ -233,6 +233,48 @@ func (s *ParallelStream) Reduce(compare func(a, b interface{}) bool) interface{}
 	return t
 }
 
+// Filter returns a stream consisting of the elements of this stream
+// that match the given predicate.
+func (s *ParallelStream) Filter(predicate func(interface{}) bool) *ParallelStream {
+	if s.slice == nil || s.slice.Len() == 0 {
+		return parallelEmpty
+	}
+
+	var mapSlice = make(map[int]Slice, cpu)
+	for i, r := range s.ranges {
+		s.wg.Add(1)
+		r := r
+		go func(i int) {
+			var slice Slice
+			for i := r.From; i < r.To; i++ {
+				v := s.slice.Index(i)
+				if predicate(v) {
+					slice = append(slice, v)
+				}
+			}
+
+			s.mu.Lock()
+			mapSlice[i] = slice
+			s.mu.Unlock()
+
+			s.wg.Done()
+		}(i)
+	}
+	s.wg.Wait()
+
+	var slice Slice
+	for i := 0; i < cpu; i++ {
+		for _, e := range mapSlice[i] {
+			slice = append(slice, e)
+		}
+	}
+
+	return &ParallelStream{
+		Stream: &Stream{slice: slice},
+		ranges: splitSlicer(slice),
+	}
+}
+
 // Sum returns the sum of elements in this stream
 // using the provided sum function in a Parallel way
 func (s *ParallelStream) Sum(sum func(interface{}) float64) float64 {

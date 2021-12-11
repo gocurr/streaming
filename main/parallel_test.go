@@ -87,3 +87,11 @@ func TestFlatMap(t *testing.T) {
 	slice := flatMap.Collect()
 	fmt.Printf("%v\n", slice)
 }
+
+func Test_ParallelFilter(t *testing.T) {
+	p := streaming.ParallelOf(words)
+	slice := p.Filter(func(i interface{}) bool {
+		return len(i.(string)) > 3
+	}).Collect()
+	fmt.Printf("%v\n", slice)
+}
