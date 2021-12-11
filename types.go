@@ -19,6 +19,25 @@ func (is Ints) Sub(i, j int) Slicer {
 	return is[i:j]
 }
 
+// Floats float slice
+type Floats []float64
+
+func (fs Floats) Set(i int, v interface{}) {
+	fs[i] = v.(float64)
+}
+
+func (fs Floats) Index(i int) interface{} {
+	return fs[i]
+}
+
+func (fs Floats) Len() int {
+	return len(fs)
+}
+
+func (fs Floats) Sub(i, j int) Slicer {
+	return fs[i:j]
+}
+
 // Strings string slice
 
 type Strings []string

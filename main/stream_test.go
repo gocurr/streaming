@@ -9,20 +9,38 @@ import (
 	"testing"
 )
 
-/*
+type Value struct {
+	val float64
+}
+
+type Values []*Value
+
+func (vs Values) Set(i int, v interface{}) {
+	vs[i] = v.(*Value)
+}
+
+func (vs Values) Index(i int) interface{} {
+	return vs[i]
+}
+
+func (vs Values) Len() int {
+	return len(vs)
+}
+
+func (vs Values) Sub(i, j int) streaming.Slicer {
+	return vs[i:j]
+}
+
 func Test_Values(t *testing.T) {
-	var vs []*Value = Values{&Value{val: 1}, &Value{val: 2}, &Value{val: 0}}
+	var vs streaming.Slicer = Values{&Value{val: 1}, &Value{val: 2}, &Value{val: 0}}
 	stream := streaming.Of(vs)
-	if err != nil {
-		return
-	}
-	stream.Limit(5).ForEach(func(i interface{}) {
+	stream.Limit(0).ForEach(func(i interface{}) {
 		fmt.Printf("%v\n", *i.(*Value))
 	})
 
 	fmt.Println()
 
-	stream.MapSame(func(i interface{}) interface{} {
+	stream.Map(func(i interface{}) interface{} {
 		return (*i.(*Value)).val * 100
 	}).ForEach(func(i interface{}) {
 		fmt.Printf("%v\n", i)
@@ -35,7 +53,7 @@ func Test_Values(t *testing.T) {
 	stream.Limit(3).ForEach(func(i interface{}) {
 		fmt.Printf("%v\t", i.(*Value).val)
 	})
-}*/
+}
 
 var ints = streaming.Ints{1, 5, 7, 2, 6, 9, 3}
 
@@ -234,4 +252,14 @@ func Test_Stream_Copy_Sort(t *testing.T) {
 func Test_Element(t *testing.T) {
 	s := streaming.Of(ints)
 	fmt.Printf("%v\n", s.Element(1))
+}
+
+var floats = streaming.Floats{1, 2, 3, 5}
+
+func Test_Floats(t *testing.T) {
+	streaming.ParallelOf(floats).Map(func(i interface{}) interface{} {
+		return i.(float64) * 10
+	}).ForEachOrdered(func(i interface{}) {
+		fmt.Printf("%v\n", i)
+	})
 }
