@@ -9,7 +9,7 @@ import (
 )
 
 func main() {
-	bytes, err := ioutil.ReadFile("main/isaac.txt")
+	bytes, err := ioutil.ReadFile("main/Isaac.Newton-Opticks.txt")
 	if err != nil {
 		return
 	}
