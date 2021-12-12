@@ -55,7 +55,7 @@ func Test_Values(t *testing.T) {
 	})
 }
 
-var ints = streaming.Ints{1, 5, 7, 2, 6, 9, 3}
+var ints = streaming.Ints{1, 5, 7, 2, 8, 6, 9, 3}
 
 func Test_Of(t *testing.T) {
 	s := streaming.Of(ints)
@@ -220,7 +220,7 @@ func Test_std_Sort(t *testing.T) {
 	s := streaming.Of(ints)
 	c := s.Collect()
 	sort.Slice(c, func(i, j int) bool {
-		return c[i].(int) > c[j].(int)
+		return c.Index(i).(int) > c.Index(j).(int)
 	})
 	fmt.Printf("%v\n", c)
 

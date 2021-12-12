@@ -1,32 +1,21 @@
 package streaming
 
 import (
-	"github.com/gocurr/partition"
-	"runtime"
 	"sort"
 	"sync"
 )
 
-// cpu number
-var cpu = runtime.NumCPU()
-
-// Ranges split parts by cpu
-type Ranges []partition.Range
-
-// splitSlicer splits Slicer by cpu
-func splitSlicer(slice Slicer) Ranges {
-	if slice == nil {
-		return nil
+// newParallel ParallelStream constructor
+func newParallel(slicer Slicer) *ParallelStream {
+	if slicer == nil {
+		return parallelEmpty
 	}
-	return split(slice.Len())
-}
 
-// splits size by cpu
-func split(size int) Ranges {
-	if size < 1 {
-		return nil
+	stream := Of(slicer)
+	return &ParallelStream{
+		Stream: stream,
+		ranges: splitSlicer(stream.slice),
 	}
-	return partition.RangesN(size, cpu)
 }
 
 // empty parallel
@@ -44,16 +33,8 @@ type ParallelStream struct {
 //
 // Returns parallelEmpty when raw is nil
 // Or is NOT a slice or an array
-func ParallelOf(raw Slicer) *ParallelStream {
-	stream := Of(raw)
-	slice := stream.slice
-
-	return &ParallelStream{
-		Stream: stream,
-		ranges: splitSlicer(slice),
-		wg:     sync.WaitGroup{},
-		mu:     sync.Mutex{},
-	}
+func ParallelOf(slicer Slicer) *ParallelStream {
+	return newParallel(slicer)
 }
 
 // ForEach performs an action for each element of this stream
@@ -139,10 +120,7 @@ func (s *ParallelStream) Map(apply func(interface{}) interface{}) *ParallelStrea
 		}
 	}
 
-	return &ParallelStream{
-		Stream: &Stream{slice: slice},
-		ranges: splitSlicer(slice),
-	}
+	return newParallel(slice)
 }
 
 // FlatMap returns a stream consisting of the results
@@ -185,10 +163,7 @@ func (s *ParallelStream) FlatMap(apply func(interface{}) Slicer) *ParallelStream
 		}
 	}
 
-	return &ParallelStream{
-		Stream: &Stream{slice: slice},
-		ranges: splitSlicer(slice),
-	}
+	return newParallel(slice)
 }
 
 // Reduce performs a reduction on the elements of this stream,
@@ -269,10 +244,7 @@ func (s *ParallelStream) Filter(predicate func(interface{}) bool) *ParallelStrea
 		}
 	}
 
-	return &ParallelStream{
-		Stream: &Stream{slice: slice},
-		ranges: splitSlicer(slice),
-	}
+	return newParallel(slice)
 }
 
 // Sum returns the sum of elements in this stream
@@ -310,10 +282,8 @@ func (s *ParallelStream) Copy() *ParallelStream {
 	for i := 0; i < s.slice.Len(); i++ {
 		slice[i] = s.slice.Index(i)
 	}
-	return &ParallelStream{
-		Stream: &Stream{slice: slice},
-		ranges: split(slice.Len()),
-	}
+
+	return newParallel(slice)
 }
 
 // Sorted returns a sorted stream consisting of the elements of this stream
@@ -326,6 +296,6 @@ func (s *ParallelStream) Sorted(less func(i, j int) bool) *ParallelStream {
 		return parallelEmpty
 	}
 	sort.Slice(s.slice, less)
-	s.ranges = split(s.slice.Len())
+	s.ranges = splitSize(s.slice.Len())
 	return s
 }
