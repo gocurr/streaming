@@ -29,10 +29,9 @@ type ParallelStream struct {
 	mu     sync.Mutex
 }
 
-// ParallelOf wraps input into *ParallelStream
+// ParallelOf wraps Slicer into ParallelStream
 //
-// Returns emptyParallel when raw is nil
-// Or is NOT a slice or an array
+// Returns emptyParallel when slicer is nil
 func ParallelOf(slicer Slicer) *ParallelStream {
 	return newParallel(slicer)
 }
@@ -280,8 +279,7 @@ func (s *ParallelStream) Sum(sum func(interface{}) float64) float64 {
 	return ff
 }
 
-// Copy returns a new stream containing the elements,
-// the new stream holds a copied slice
+// Copy returns a new stream that holds a copied slice
 func (s *ParallelStream) Copy() *ParallelStream {
 	slice := make(Slice, s.slice.Len())
 	for i := 0; i < s.slice.Len(); i++ {
