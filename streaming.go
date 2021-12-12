@@ -5,8 +5,11 @@ import (
 	"sort"
 )
 
+// empty slice
+var emptySlice = make(Slice, 0)
+
 // empty stream
-var empty = &Stream{slice: make(Slice, 0)}
+var emptyStream = &Stream{slice: emptySlice}
 
 // Stream Slice holder
 type Stream struct {
@@ -16,15 +19,14 @@ type Stream struct {
 // newStream Stream constructor
 func newStream(slice Slicer) *Stream {
 	if slice == nil {
-		return empty
+		return emptyStream
 	}
 	return &Stream{slice: slice}
 }
 
 // Of wraps Slicer into Stream
 //
-// Returns empty when raw is nil
-// Or is NOT a slice or an array
+// Returns emptyStream when slicer is nil
 func Of(slicer Slicer) *Stream {
 	return newStream(slicer)
 }
@@ -52,7 +54,7 @@ func (s *Stream) Peek(act func(interface{})) *Stream {
 // truncated to be no longer than max-size in length.
 func (s *Stream) Limit(n int) *Stream {
 	if n < 1 {
-		return empty
+		return emptyStream
 	}
 
 	if n > s.slice.Len() {
@@ -66,14 +68,14 @@ func (s *Stream) Limit(n int) *Stream {
 // Skip returns a stream consisting of the remaining elements
 // of this stream after discarding the first n elements
 // of the stream. If the stream contains fewer than n elements then
-// an empty stream will be returned.
+// emptyStream will be returned.
 func (s *Stream) Skip(n int) *Stream {
 	if n < 0 {
 		return s
 	}
 
 	if n > s.slice.Len() {
-		return empty
+		return emptyStream
 	}
 
 	var slice = s.slice.Sub(n, s.slice.Len())
@@ -175,7 +177,7 @@ func (s *Stream) FilterCount(predicate func(interface{}) bool) int {
 // with original order
 func (s *Stream) Distinct() *Stream {
 	if s.slice.Len() < 1 {
-		return empty
+		return emptyStream
 	}
 
 	var slice Slice
@@ -194,7 +196,7 @@ func (s *Stream) Distinct() *Stream {
 // Collect returns data load of this stream
 func (s *Stream) Collect() Slicer {
 	if s.slice.Len() < 1 {
-		return nil
+		return emptySlice
 	}
 	return s.slice.Sub(0, s.slice.Len())
 }
@@ -333,7 +335,7 @@ func (h *cvHeap) Pop() interface{} {
 // Top returns a stream consisting of n elements that appear most often
 func (s *Stream) Top(n int) *Stream {
 	if n < 1 || s.slice.Len() < 1 {
-		return empty
+		return emptyStream
 	}
 
 	var memory = make(map[interface{}]int)

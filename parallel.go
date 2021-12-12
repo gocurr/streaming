@@ -5,13 +5,13 @@ import (
 	"sync"
 )
 
-// empty parallel
-var parallelEmpty = &ParallelStream{Stream: empty}
+// empty parallel stream
+var emptyParallel = &ParallelStream{Stream: emptyStream}
 
 // newParallel ParallelStream constructor
 func newParallel(slicer Slicer) *ParallelStream {
 	if slicer == nil {
-		return parallelEmpty
+		return emptyParallel
 	}
 
 	stream := Of(slicer)
@@ -31,7 +31,7 @@ type ParallelStream struct {
 
 // ParallelOf wraps input into *ParallelStream
 //
-// Returns parallelEmpty when raw is nil
+// Returns emptyParallel when raw is nil
 // Or is NOT a slice or an array
 func ParallelOf(slicer Slicer) *ParallelStream {
 	return newParallel(slicer)
@@ -70,7 +70,7 @@ func (s *ParallelStream) ForEachOrdered(act func(interface{})) {
 // or else it will PANIC
 func (s *ParallelStream) MapSame(apply func(interface{}) interface{}) *ParallelStream {
 	if s.slice.Len() < 1 {
-		return parallelEmpty
+		return emptyParallel
 	}
 
 	for i, r := range s.ranges {
@@ -94,7 +94,7 @@ func (s *ParallelStream) MapSame(apply func(interface{}) interface{}) *ParallelS
 // function to the elements of this stream in a Parallel way
 func (s *ParallelStream) Map(apply func(interface{}) interface{}) *ParallelStream {
 	if s.slice.Len() < 1 {
-		return parallelEmpty
+		return emptyParallel
 	}
 
 	var mapSlice = make(map[int]Slice, cpu)
@@ -131,7 +131,7 @@ func (s *ParallelStream) Map(apply func(interface{}) interface{}) *ParallelStrea
 // of replacing each element of this stream
 func (s *ParallelStream) FlatMap(apply func(interface{}) Slicer) *ParallelStream {
 	if s.slice.Len() < 1 {
-		return parallelEmpty
+		return emptyParallel
 	}
 
 	var mapSlice = make(map[int]Slice, cpu)
@@ -216,7 +216,7 @@ func (s *ParallelStream) Reduce(compare func(a, b interface{}) bool) interface{}
 // that match the given predicate.
 func (s *ParallelStream) Filter(predicate func(interface{}) bool) *ParallelStream {
 	if s.slice.Len() < 1 {
-		return parallelEmpty
+		return emptyParallel
 	}
 
 	var mapSlice = make(map[int]Slice, cpu)
