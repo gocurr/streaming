@@ -283,9 +283,6 @@ func (s *ParallelStream) Sum(sum func(interface{}) float64) float64 {
 // Copy returns a new stream containing the elements,
 // the new stream holds a copied slice
 func (s *ParallelStream) Copy() *ParallelStream {
-	if s.slice.Len() < 1 {
-		return parallelEmpty
-	}
 	slice := make(Slice, s.slice.Len())
 	for i := 0; i < s.slice.Len(); i++ {
 		slice[i] = s.slice.Index(i)
@@ -300,9 +297,6 @@ func (s *ParallelStream) Copy() *ParallelStream {
 // Sorted reorders inside slice
 // For keeping the order relation of original slice, use Copy first
 func (s *ParallelStream) Sorted(less func(i, j int) bool) *ParallelStream {
-	if s.slice.Len() < 1 {
-		return parallelEmpty
-	}
 	sort.Slice(s.slice, less)
 	s.ranges = splitSize(s.slice.Len())
 	return s
