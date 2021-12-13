@@ -8,10 +8,10 @@ import (
 // cpu number
 var cpu = runtime.NumCPU()
 
-// Ranges split parts by cpu
+// Ranges split by cpu
 type Ranges []partition.Range
 
-// splitSlicer splits Slicer by cpu
+// splits Slicer by cpu
 func splitSlicer(slice Slicer) Ranges {
 	if slice == nil {
 		return nil

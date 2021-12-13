@@ -193,7 +193,7 @@ func (s *Stream) Distinct() *Stream {
 	return newStream(slice)
 }
 
-// Collect returns data load of this stream
+// Collect returns Slicer of this stream
 func (s *Stream) Collect() Slicer {
 	if s.slice.Len() < 1 {
 		return emptySlice

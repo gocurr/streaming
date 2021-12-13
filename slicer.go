@@ -21,7 +21,7 @@ func (s Slice) Index(i int) interface{} {
 	return s[i]
 }
 
-// Len returns length
+// Len returns length of Slicer
 func (s Slice) Len() int {
 	return len(s)
 }
