@@ -280,7 +280,13 @@ func (s *ParallelStream) Sum(sum func(interface{}) float64) float64 {
 }
 
 // Copy returns a new stream that holds a copied slice
+//
+// Returns emptyParallel when stream is empty
 func (s *ParallelStream) Copy() *ParallelStream {
+	if s.slice.Len() < 1 {
+		return emptyParallel
+	}
+
 	slice := make(Slice, s.slice.Len())
 	for i := 0; i < s.slice.Len(); i++ {
 		slice[i] = s.slice.Index(i)

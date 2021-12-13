@@ -287,7 +287,13 @@ func (s *Stream) Element(i int) interface{} {
 
 // Copy returns a new stream containing the elements,
 // the new stream holds a copied slice
+//
+// Returns emptyStream when stream is empty
 func (s *Stream) Copy() *Stream {
+	if s.slice.Len() < 1 {
+		return emptyStream
+	}
+
 	slice := make(Slice, s.slice.Len())
 	for i := 0; i < s.slice.Len(); i++ {
 		slice[i] = s.slice.Index(i)
