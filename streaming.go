@@ -16,7 +16,10 @@ type Stream struct {
 	slice Slicer
 }
 
+// defaultChans default capacity of chan-slice
 const defaultChans = 16
+
+// defaultChanBufSize default capacity of buffered-channel
 const defaultChanBufSize = 1024
 
 // newStream Stream constructor
@@ -35,6 +38,30 @@ func newStream(slice Slicer) *Stream {
 // Returns emptyStream when slicer is nil
 func Of(slicer Slicer) *Stream {
 	return newStream(slicer)
+}
+
+// prevChan returns previous channel
+func (s *Stream) prevChan() chan interface{} {
+	var ch chan interface{}
+	if len(s.chans) == 0 {
+		ch = s.curChan()
+		go func() {
+			for i := 0; i < s.slice.Len(); i++ {
+				ch <- s.slice.Index(i)
+			}
+			close(ch)
+		}()
+	} else {
+		ch = s.chans[len(s.chans)-1]
+	}
+	return ch
+}
+
+// curChan returns current channel
+func (s *Stream) curChan() chan interface{} {
+	cur := make(chan interface{}, defaultChanBufSize)
+	s.chans = append(s.chans, cur)
+	return cur
 }
 
 // ForEach performs an action for each element of this stream.
@@ -111,28 +138,6 @@ func (s *Stream) Skip(n int) *Stream {
 	}()
 
 	return s
-}
-
-func (s *Stream) prevChan() chan interface{} {
-	var ch chan interface{}
-	if len(s.chans) == 0 {
-		ch = s.curChan()
-		go func() {
-			for i := 0; i < s.slice.Len(); i++ {
-				ch <- s.slice.Index(i)
-			}
-			close(ch)
-		}()
-	} else {
-		ch = s.chans[len(s.chans)-1]
-	}
-	return ch
-}
-
-func (s *Stream) curChan() chan interface{} {
-	cur := make(chan interface{}, defaultChanBufSize)
-	s.chans = append(s.chans, cur)
-	return cur
 }
 
 // Map returns a stream consisting of the results (any type)
