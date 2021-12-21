@@ -32,26 +32,26 @@ func (vs Values) Sub(i, j int) streaming.Slicer {
 }
 
 func Test_Values(t *testing.T) {
-	var vs streaming.Slicer = Values{&Value{val: 1}, &Value{val: 2}, &Value{val: 0}}
+	var vs streaming.Slicer = Values{&Value{val: 1}, &Value{val: 2}, &Value{val: 3}}
 	stream := streaming.Of(vs)
-	stream.Limit(0).ForEach(func(i interface{}) {
-		fmt.Printf("%v\n", *i.(*Value))
+	stream.Limit(1).ForEach(func(i interface{}) {
+		fmt.Printf("foreach: %v\n", *i.(*Value))
 	})
 
 	fmt.Println()
-
+	stream = streaming.Of(vs)
 	stream.Map(func(i interface{}) interface{} {
 		return (*i.(*Value)).val * 100
 	}).ForEach(func(i interface{}) {
-		fmt.Printf("%v\n", i)
+		fmt.Printf("foreach: %v\n", i)
 	})
-	fmt.Printf("%v\n\n", stream.Count())
-	fmt.Printf("%v\n\n", stream.Filter(func(i interface{}) bool {
+	fmt.Printf("\ncount: %v\n\n", streaming.Of(vs).Count())
+	fmt.Printf("filter: %v\n\n", streaming.Of(vs).Filter(func(i interface{}) bool {
 		return i.(*Value).val > 1
 	}).Count())
 
-	stream.Limit(3).ForEach(func(i interface{}) {
-		fmt.Printf("%v\t", i.(*Value).val)
+	streaming.Of(vs).Limit(3).ForEach(func(i interface{}) {
+		fmt.Printf("foreach: %v\n", i.(*Value).val)
 	})
 }
 
@@ -65,9 +65,11 @@ func Test_Of(t *testing.T) {
 func Test_Filter(t *testing.T) {
 	s := streaming.Of(ints)
 	filter := s.Filter(func(i interface{}) bool {
-		return i.(int) > 2
+		return i.(int) > 5
 	})
-	fmt.Printf("%v\n", filter)
+	filter.ForEach(func(i interface{}) {
+		fmt.Println(i)
+	})
 }
 
 func Test_Collect(t *testing.T) {
@@ -108,7 +110,7 @@ func TestStream_Reduce(t *testing.T) {
 	s := streaming.Of(ints)
 
 	reduce := s.Reduce(func(a, b interface{}) bool {
-		return a.(int) > b.(int)
+		return a.(int) < b.(int)
 	})
 	fmt.Println(reduce)
 }
@@ -129,22 +131,22 @@ func Test_Sum(t *testing.T) {
 }
 
 func Test_Match(t *testing.T) {
-	stream := streaming.Of(ints)
-	println(stream.AnyMatch(func(i interface{}) bool {
-		return i.(int) > 12
+	println(streaming.Of(ints).AnyMatch(func(i interface{}) bool {
+		return i.(int) > 2
 	}))
 
-	println(stream.AllMatch(func(i interface{}) bool {
-		return i.(int) > 0
+	println(streaming.Of(ints).AllMatch(func(i interface{}) bool {
+		return i.(int) > 2
 	}))
 
-	println(stream.NonMatch(func(i interface{}) bool {
-		return i.(int) == 0
+	println(streaming.Of(ints).NonMatch(func(i interface{}) bool {
+		return i.(int) > 2
 	}))
 }
 
 func Test_IsEmpty(t *testing.T) {
 	println(streaming.Of(nil).IsEmpty())
+	println(streaming.Of(ints).IsEmpty())
 }
 
 func Test_FlatMap(t *testing.T) {
@@ -158,7 +160,7 @@ func Test_FlatMap(t *testing.T) {
 	})
 }
 
-var words = streaming.Strings{"one", "two", "three"}
+var words = streaming.Strings{"one", "two", "three good"}
 
 func Test_Peek(t *testing.T) {
 	stream := streaming.Of(words)

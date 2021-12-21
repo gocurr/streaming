@@ -80,11 +80,14 @@ func (s *Stream) ForEach(act func(interface{})) {
 // as elements are consumed from the resulting stream
 func (s *Stream) Peek(act func(interface{})) *Stream {
 	prev := s.prevChan()
+	cur := s.curChan()
 
 	go func() {
 		for v := range prev {
 			act(v)
+			cur <- v
 		}
+		close(cur)
 	}()
 
 	return s
@@ -94,10 +97,6 @@ func (s *Stream) Peek(act func(interface{})) *Stream {
 // truncated to be no longer than max-size in length.
 func (s *Stream) Limit(n int) *Stream {
 	prev := s.prevChan()
-	if n > len(prev) {
-		return s
-	}
-
 	cur := s.curChan()
 
 	go func() {
@@ -106,6 +105,7 @@ func (s *Stream) Limit(n int) *Stream {
 			if counter < n {
 				counter++
 				cur <- v
+				continue
 			}
 			break
 		}
@@ -267,7 +267,11 @@ func (s *Stream) Collect() Slicer {
 
 // Count returns the count of elements in this stream
 func (s *Stream) Count() int {
-	return len(s.prevChan())
+	var counter int
+	for range s.prevChan() {
+		counter++
+	}
+	return counter
 }
 
 // IsEmpty reports stream is empty
