@@ -425,3 +425,8 @@ func (s *Stream) Top(n int) *Stream {
 
 	return s
 }
+
+// Copy returns a new stream
+func (s *Stream) Copy() *Stream {
+	return newStream(s.slice)
+}

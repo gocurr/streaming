@@ -214,3 +214,18 @@ func Test_TopN(t *testing.T) {
 	top := streaming.Of(floats).Top(2).Collect()
 	fmt.Printf("%v\n", top)
 }
+
+func TestCopy(t *testing.T) {
+	of := streaming.Of(ints)
+	cof := of.Copy()
+
+	of.Limit(2).ForEach(func(i interface{}) {
+		fmt.Println(i)
+	})
+
+	fmt.Println()
+
+	cof.Limit(3).ForEach(func(i interface{}) {
+		fmt.Println(i)
+	})
+}
