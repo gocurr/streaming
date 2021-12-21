@@ -9,11 +9,6 @@ type Slicer interface {
 // Slice alias of interface slice
 type Slice []interface{}
 
-// Set element in the specific position
-func (s Slice) Set(i int, v interface{}) {
-	s[i] = v
-}
-
 // Index returns element in the specific position
 func (s Slice) Index(i int) interface{} {
 	return s[i]
@@ -22,9 +17,4 @@ func (s Slice) Index(i int) interface{} {
 // Len returns length of Slicer
 func (s Slice) Len() int {
 	return len(s)
-}
-
-// Sub returns sub Slicer with range from i to j
-func (s Slice) Sub(i, j int) Slicer {
-	return s[i:j]
 }

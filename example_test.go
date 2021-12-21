@@ -1,4 +1,4 @@
-package examples
+package streaming_test
 
 import (
 	"fmt"
