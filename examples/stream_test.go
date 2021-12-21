@@ -55,7 +55,7 @@ func Test_Values(t *testing.T) {
 	})
 }
 
-var ints = streaming.Ints{1, 5, 7, 2, 8, 6, 9, 3}
+var ints = streaming.Ints{1, 5, 7, 2, 8, 6, 9, 3, 9, 1}
 
 func Test_Of(t *testing.T) {
 	s := streaming.Of(ints)
@@ -211,7 +211,7 @@ func Test_Element(t *testing.T) {
 var floats = streaming.Floats{1, 2, 2, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 44, 5, 5, 5}
 
 func Test_TopN(t *testing.T) {
-	top := streaming.Of(floats).Top(2).Collect()
+	top := streaming.Of(floats).Top(1).Collect()
 	fmt.Printf("%v\n", top)
 }
 

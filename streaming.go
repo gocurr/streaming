@@ -241,14 +241,16 @@ func (s *Stream) Distinct() *Stream {
 	prev := s.prevChan()
 	cur := s.curChan()
 
-	var memory = make(map[interface{}]struct{})
-	for v := range prev {
-		if _, ok := memory[v]; !ok {
-			memory[v] = nothing
-			cur <- v
+	go func() {
+		var memory = make(map[interface{}]struct{})
+		for v := range prev {
+			if _, ok := memory[v]; !ok {
+				memory[v] = nothing
+				cur <- v
+			}
 		}
-	}
-	close(cur)
+		close(cur)
+	}()
 
 	return s
 }
@@ -344,6 +346,10 @@ func (s *Stream) FindFirst() interface{} {
 //
 // nil is returned when index is out of range
 func (s *Stream) Element(i int) interface{} {
+	if i < 0 {
+		return nil
+	}
+
 	var counter int
 
 	prev := s.prevChan()
@@ -386,10 +392,14 @@ func (h *cvHeap) Pop() interface{} {
 
 // Top returns a stream consisting of n elements that appear most often
 func (s *Stream) Top(n int) *Stream {
-	var memory = make(map[interface{}]int)
-
 	prev := s.prevChan()
 	cur := s.curChan()
+	if n < 1 {
+		close(cur)
+		return s
+	}
+
+	var memory = make(map[interface{}]int)
 
 	go func() {
 		for v := range prev {
@@ -415,7 +425,7 @@ func (s *Stream) Top(n int) *Stream {
 		for h.Len() != 0 {
 			cv := heap.Pop(h)
 			cur <- cv
-			if counter == n {
+			if counter == n-1 {
 				break
 			}
 			counter++
