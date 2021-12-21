@@ -2,10 +2,8 @@ package streaming
 
 // Slicer interface type for streaming
 type Slicer interface {
-	Set(i int, v interface{})
 	Index(i int) interface{}
 	Len() int
-	Sub(i, j int) Slicer
 }
 
 // Slice alias of interface slice
