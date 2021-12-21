@@ -45,8 +45,11 @@ func (s *Stream) prevChan() chan interface{} {
 	var ch chan interface{}
 	if len(s.chans) == 0 {
 		ch = s.curChan()
+		if s.slice.Len() > 0 {
+			ch <- s.slice.Index(0)
+		}
 		go func() {
-			for i := 0; i < s.slice.Len(); i++ {
+			for i := 1; i < s.slice.Len(); i++ {
 				ch <- s.slice.Index(i)
 			}
 			close(ch)
