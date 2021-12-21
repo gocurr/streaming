@@ -2,7 +2,6 @@ package streaming
 
 import (
 	"container/heap"
-	"sort"
 )
 
 // empty slice
@@ -13,15 +12,22 @@ var emptyStream = &Stream{slice: emptySlice}
 
 // Stream Slice holder
 type Stream struct {
+	chans []chan interface{}
 	slice Slicer
 }
+
+const defaultChans = 16
+const defaultChanBufSize = 1024
 
 // newStream Stream constructor
 func newStream(slice Slicer) *Stream {
 	if slice == nil {
 		return emptyStream
 	}
-	return &Stream{slice: slice}
+	return &Stream{
+		chans: make([]chan interface{}, 0, defaultChans),
+		slice: slice,
+	}
 }
 
 // Of wraps Slicer into Stream
@@ -33,8 +39,8 @@ func Of(slicer Slicer) *Stream {
 
 // ForEach performs an action for each element of this stream.
 func (s *Stream) ForEach(act func(interface{})) {
-	for i := 0; i < s.slice.Len(); i++ {
-		v := s.slice.Index(i)
+	prev := s.prevChan()
+	for v := range prev {
 		act(v)
 	}
 }
@@ -43,26 +49,40 @@ func (s *Stream) ForEach(act func(interface{})) {
 // additionally performing the provided action on each element
 // as elements are consumed from the resulting stream
 func (s *Stream) Peek(act func(interface{})) *Stream {
-	for i := 0; i < s.slice.Len(); i++ {
-		v := s.slice.Index(i)
-		act(v)
-	}
+	prev := s.prevChan()
+
+	go func() {
+		for v := range prev {
+			act(v)
+		}
+	}()
+
 	return s
 }
 
 // Limit returns a stream consisting of the elements of this stream,
 // truncated to be no longer than max-size in length.
 func (s *Stream) Limit(n int) *Stream {
-	if n < 1 {
-		return emptyStream
-	}
-
-	if n > s.slice.Len() {
+	prev := s.prevChan()
+	if n > len(prev) {
 		return s
 	}
 
-	var slice = s.slice.Sub(0, n)
-	return newStream(slice)
+	cur := s.curChan()
+
+	go func() {
+		var counter int
+		for v := range prev {
+			if counter < n {
+				counter++
+				cur <- v
+			}
+			break
+		}
+		close(cur)
+	}()
+
+	return s
 }
 
 // Skip returns a stream consisting of the remaining elements
@@ -70,61 +90,88 @@ func (s *Stream) Limit(n int) *Stream {
 // of the stream. If the stream contains fewer than n elements then
 // emptyStream will be returned.
 func (s *Stream) Skip(n int) *Stream {
-	if n < 0 {
+	prev := s.prevChan()
+	if n <= 0 {
 		return s
 	}
 
-	if n > s.slice.Len() {
-		return emptyStream
-	}
+	cur := s.curChan()
 
-	var slice = s.slice.Sub(n, s.slice.Len())
-	return newStream(slice)
-}
-
-// MapSame returns the same stream whose elements
-// are applied by the given function.
-//
-// The apply function must return the same type,
-// or else it will PANIC
-func (s *Stream) MapSame(apply func(interface{}) interface{}) *Stream {
-	for i := 0; i < s.slice.Len(); i++ {
-		v := s.slice.Index(i)
-		s.slice.Set(i, apply(v))
-	}
+	go func() {
+		var counter int
+		for v := range prev {
+			if counter < n {
+				counter++
+				continue
+			}
+			cur <- v
+			counter++
+		}
+		close(cur)
+	}()
 
 	return s
+}
+
+func (s *Stream) prevChan() chan interface{} {
+	var ch chan interface{}
+	if len(s.chans) == 0 {
+		ch = s.curChan()
+		go func() {
+			for i := 0; i < s.slice.Len(); i++ {
+				ch <- s.slice.Index(i)
+			}
+			close(ch)
+		}()
+	} else {
+		ch = s.chans[len(s.chans)-1]
+	}
+	return ch
+}
+
+func (s *Stream) curChan() chan interface{} {
+	cur := make(chan interface{}, defaultChanBufSize)
+	s.chans = append(s.chans, cur)
+	return cur
 }
 
 // Map returns a stream consisting of the results (any type)
 // of applying the given function to the elements of this stream.
 func (s *Stream) Map(apply func(interface{}) interface{}) *Stream {
-	var slice Slice
-	for i := 0; i < s.slice.Len(); i++ {
-		v := s.slice.Index(i)
-		slice = append(slice, apply(v))
-	}
+	prev := s.prevChan()
+	cur := s.curChan()
 
-	return newStream(slice)
+	go func() {
+		for v := range prev {
+			cur <- apply(v)
+		}
+		close(cur)
+	}()
+
+	return s
 }
 
 // FlatMap returns a stream consisting of the results
 // of replacing each element of this stream
 func (s *Stream) FlatMap(apply func(interface{}) Slicer) *Stream {
-	var slice Slice
-	for i := 0; i < s.slice.Len(); i++ {
-		v := apply(s.slice.Index(i))
-		if v == nil {
-			continue
-		}
+	prev := s.prevChan()
+	cur := s.curChan()
 
-		for i := 0; i < v.Len(); i++ {
-			ele := v.Index(i)
-			slice = append(slice, ele)
+	go func() {
+		for v := range prev {
+			vv := apply(v)
+			if vv == nil {
+				continue
+			}
+			for i := 0; i < vv.Len(); i++ {
+				ele := vv.Index(i)
+				cur <- ele
+			}
 		}
-	}
+		close(cur)
+	}()
 
-	return newStream(slice)
+	return s
 }
 
 // Reduce performs a reduction on the elements of this stream,
@@ -132,13 +179,12 @@ func (s *Stream) FlatMap(apply func(interface{}) Slicer) *Stream {
 //
 // When steam is empty, Reduce returns nil
 func (s *Stream) Reduce(compare func(a, b interface{}) bool) interface{} {
-	if s.slice.Len() < 1 {
+	prev := s.prevChan()
+	if len(prev) == 0 {
 		return nil
 	}
-
-	t := s.slice.Index(0)
-	for j := 1; j < s.slice.Len(); j++ {
-		v := s.slice.Index(j)
+	t := <-prev
+	for v := range prev {
 		if compare(v, t) {
 			t = v
 		}
@@ -150,22 +196,28 @@ func (s *Stream) Reduce(compare func(a, b interface{}) bool) interface{} {
 // Filter returns a stream consisting of the elements of this stream
 // that match the given predicate.
 func (s *Stream) Filter(predicate func(interface{}) bool) *Stream {
-	var slice Slice
-	for i := 0; i < s.slice.Len(); i++ {
-		v := s.slice.Index(i)
-		if predicate(v) {
-			slice = append(slice, v)
+	prev := s.prevChan()
+	cur := s.curChan()
+
+	go func() {
+		for v := range prev {
+			if predicate(v) {
+				cur <- v
+			}
 		}
-	}
-	return newStream(slice)
+		close(cur)
+	}()
+
+	return s
 }
 
 // FilterCount returns count of the elements of this stream
 // that match the given predicate.
 func (s *Stream) FilterCount(predicate func(interface{}) bool) int {
 	var c int
-	for i := 0; i < s.slice.Len(); i++ {
-		v := s.slice.Index(i)
+
+	prev := s.prevChan()
+	for v := range prev {
 		if predicate(v) {
 			c++
 		}
@@ -173,52 +225,58 @@ func (s *Stream) FilterCount(predicate func(interface{}) bool) int {
 	return c
 }
 
+var nothing struct{}
+
 // Distinct returns a stream consisting of the distinct elements
 // with original order
 func (s *Stream) Distinct() *Stream {
-	if s.slice.Len() < 1 {
-		return emptyStream
-	}
+	prev := s.prevChan()
+	cur := s.curChan()
 
-	var slice Slice
-	var memory = make(map[interface{}]int)
-	for i := 0; i < s.slice.Len(); i++ {
-		v := s.slice.Index(i)
+	var memory = make(map[interface{}]struct{})
+	for v := range prev {
 		if _, ok := memory[v]; !ok {
-			memory[v] = i
-			slice = append(slice, v)
+			memory[v] = nothing
+			cur <- v
 		}
 	}
+	close(cur)
 
-	return newStream(slice)
+	return s
 }
 
 // Collect returns Slicer of this stream
 func (s *Stream) Collect() Slicer {
-	if s.slice.Len() < 1 {
-		return emptySlice
+	var slice Slice
+
+	prev := s.prevChan()
+	for v := range prev {
+		slice = append(slice, v)
 	}
-	return s.slice.Sub(0, s.slice.Len())
+
+	return slice
 }
 
 // Count returns the count of elements in this stream
 func (s *Stream) Count() int {
-	return s.slice.Len()
+	return len(s.prevChan())
 }
 
 // IsEmpty reports stream is empty
 func (s *Stream) IsEmpty() bool {
-	return s.slice.Len() < 1
+	return s.Count() == 0
 }
 
 // Sum returns the sum of elements in this stream
 // using the provided sum function
 func (s *Stream) Sum(sum func(interface{}) float64) float64 {
 	var r float64
-	for i := 0; i < s.slice.Len(); i++ {
-		v := s.slice.Index(i)
+
+	prev := s.prevChan()
+	for v := range prev {
 		r += sum(v)
 	}
+
 	return r
 }
 
@@ -227,8 +285,8 @@ func (s *Stream) Sum(sum func(interface{}) float64) float64 {
 // on all elements if not necessary for determining the result.
 // If the stream is empty then false is returned and the predicate is not evaluated.
 func (s *Stream) AnyMatch(predicate func(interface{}) bool) bool {
-	for i := 0; i < s.slice.Len(); i++ {
-		v := s.slice.Index(i)
+	prev := s.prevChan()
+	for v := range prev {
 		if predicate(v) {
 			return true
 		}
@@ -241,74 +299,50 @@ func (s *Stream) AnyMatch(predicate func(interface{}) bool) bool {
 // on all elements if not necessary for determining the result.
 // If the stream is empty then true is returned and the predicate is not evaluated.
 func (s *Stream) AllMatch(predicate func(interface{}) bool) bool {
-	for i := 0; i < s.slice.Len(); i++ {
-		v := s.slice.Index(i)
+	prev := s.prevChan()
+	for v := range prev {
 		if predicate(v) {
 			continue
 		}
 		return false
 	}
+
 	return true
 }
 
-// NoneMatch returns whether no elements of this stream match
+// NonMatch returns whether no elements of this stream match
 // the provided predicate. May not evaluate the predicated
 // on all elements if not necessary for determining the result.
 // If the stream is empty then true is returned and the predicate is not evaluated.
-func (s *Stream) NoneMatch(predicate func(interface{}) bool) bool {
-	for i := 0; i < s.slice.Len(); i++ {
-		v := s.slice.Index(i)
-		if !predicate(v) {
-			continue
-		}
-		return false
-	}
-	return true
+func (s *Stream) NonMatch(predicate func(interface{}) bool) bool {
+	return !s.AllMatch(predicate)
 }
 
 // FindFirst returns the first element of the stream,
 // or nil if the stream is empty
 func (s *Stream) FindFirst() interface{} {
-	if s.slice.Len() < 1 {
+	prev := s.prevChan()
+	if len(prev) == 0 {
 		return nil
 	}
-	return s.slice.Index(0)
+	return <-prev
 }
 
 // Element returns the element at the specified position in this stream
 //
 // nil is returned when index is out of range
 func (s *Stream) Element(i int) interface{} {
-	if i < 0 || i >= s.slice.Len() {
-		return nil
-	}
-	return s.slice.Index(i)
-}
+	var counter int
 
-// Copy returns a new stream containing the elements,
-// the new stream holds a copied slice
-//
-// Returns emptyStream when stream is empty
-func (s *Stream) Copy() *Stream {
-	if s.slice.Len() < 1 {
-		return emptyStream
+	prev := s.prevChan()
+	for v := range prev {
+		if counter == i {
+			return v
+		}
+		counter++
 	}
 
-	slice := make(Slice, s.slice.Len())
-	for i := 0; i < s.slice.Len(); i++ {
-		slice[i] = s.slice.Index(i)
-	}
-	return newStream(slice)
-}
-
-// Sorted returns a sorted stream consisting of the elements of this stream
-// sorted according to the provided less.
-//
-// Sorted reorders inside slice
-// For keeping the order relation of original slice, use Copy first
-func (s *Stream) Sorted(less func(i, j int) bool) *Stream {
-	sort.Slice(s.slice, less)
-	return s
+	return nil
 }
 
 // CountVal Count-Val wrapper
@@ -340,38 +374,42 @@ func (h *cvHeap) Pop() interface{} {
 
 // Top returns a stream consisting of n elements that appear most often
 func (s *Stream) Top(n int) *Stream {
-	if n < 1 || s.slice.Len() < 1 {
-		return emptyStream
-	}
-
 	var memory = make(map[interface{}]int)
-	for i := 0; i < s.slice.Len(); i++ {
-		v := s.slice.Index(i)
-		if _, ok := memory[v]; !ok {
-			memory[v] = 1
-		} else {
-			memory[v] += 1
+
+	prev := s.prevChan()
+	cur := s.curChan()
+
+	go func() {
+		for v := range prev {
+			if _, ok := memory[v]; !ok {
+				memory[v] = 1
+			} else {
+				memory[v] += 1
+			}
 		}
-	}
-	var cvs cvHeap
-	for v, count := range memory {
-		cvs = append(cvs, CountVal{
-			Count: count,
-			Val:   v,
-		})
-	}
 
-	h := &cvs
-	heap.Init(h)
-
-	var slice Slice
-	for h.Len() != 0 {
-		cv := heap.Pop(h)
-		slice = append(slice, cv)
-		if len(slice) == n {
-			break
+		var cvs cvHeap
+		for v, count := range memory {
+			cvs = append(cvs, CountVal{
+				Count: count,
+				Val:   v,
+			})
 		}
-	}
 
-	return newStream(slice)
+		h := &cvs
+		heap.Init(h)
+
+		var counter int
+		for h.Len() != 0 {
+			cv := heap.Pop(h)
+			cur <- cv
+			if counter == n {
+				break
+			}
+			counter++
+		}
+		close(cur)
+	}()
+
+	return s
 }

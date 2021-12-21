@@ -78,15 +78,6 @@ func Test_Collect(t *testing.T) {
 	fmt.Printf("%v\n", collect)
 }
 
-func Test_Map(t *testing.T) {
-	s := streaming.Of(ints)
-
-	collect := s.MapSame(func(i interface{}) interface{} {
-		return i.(int) * 2
-	}).Collect()
-	fmt.Printf("%v\n", collect)
-}
-
 func Test_ForEach(t *testing.T) {
 	s := streaming.Of(ints)
 	s.ForEach(func(i interface{}) {
@@ -122,19 +113,6 @@ func TestStream_Reduce(t *testing.T) {
 	fmt.Println(reduce)
 }
 
-func Test_nil(t *testing.T) {
-	stream := streaming.Of(nil)
-	if stream == nil {
-		return
-	}
-
-	println(stream.MapSame(func(i interface{}) interface{} {
-		return i.(int) * 100
-	}).Filter(func(i interface{}) bool {
-		return i.(int) > 3
-	}).Limit(100).Count())
-}
-
 func Test_Distinct(t *testing.T) {
 	stream := streaming.Of(ints)
 	stream.Distinct().ForEach(func(i interface{}) {
@@ -160,7 +138,7 @@ func Test_Match(t *testing.T) {
 		return i.(int) > 0
 	}))
 
-	println(stream.NoneMatch(func(i interface{}) bool {
+	println(stream.NonMatch(func(i interface{}) bool {
 		return i.(int) == 0
 	}))
 }
@@ -209,13 +187,6 @@ func Test_FindFirst(t *testing.T) {
 	fmt.Printf("%v\n", first)
 }
 
-func Test_Copy(t *testing.T) {
-	s := streaming.Of(ints)
-	ss := s.Copy()
-	fmt.Printf("%p %p\n", s, s.Collect())
-	fmt.Printf("%p %p\n", ss, ss.Collect())
-}
-
 func Test_std_Sort(t *testing.T) {
 	s := streaming.Of(ints)
 	c := s.Collect()
@@ -230,39 +201,12 @@ func Test_std_Sort(t *testing.T) {
 	fmt.Printf("%v\n", ints)
 }
 
-func Test_Stream_Sort(t *testing.T) {
-	s := streaming.Of(ints)
-	slice := s.Sorted(func(i, j int) bool {
-		//return s.Element(i).(int) > s.Element(j).(int)
-		return s.Element(i).(int) > s.Element(j).(int)
-	}).Collect()
-	fmt.Printf("%v\n", slice)
-}
-
-func Test_Stream_Copy_Sort(t *testing.T) {
-	s := streaming.Of(ints)
-	_copy := s.Copy()
-	slice := s.Sorted(func(i, j int) bool {
-		return s.Element(i).(int) > s.Element(j).(int)
-	}).Collect()
-	fmt.Printf("%v\n", slice)
-	fmt.Printf("%v\n", _copy.Collect())
-}
-
 func Test_Element(t *testing.T) {
 	s := streaming.Of(ints)
 	fmt.Printf("%v\n", s.Element(1))
 }
 
 var floats = streaming.Floats{1, 2, 2, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 44, 5, 5, 5}
-
-func Test_Floats(t *testing.T) {
-	streaming.ParallelOf(floats).MapSame(func(i interface{}) interface{} {
-		return i.(float64) * 10
-	}).ForEachOrdered(func(i interface{}) {
-		fmt.Printf("%v\n", i)
-	})
-}
 
 func Test_TopN(t *testing.T) {
 	top := streaming.Of(floats).Top(2).Collect()
