@@ -26,10 +26,10 @@ func (fs Floats) Len() int {
 
 type Strings []string
 
-func (s Strings) Index(i int) interface{} {
-	return s[i]
+func (ss Strings) Index(i int) interface{} {
+	return ss[i]
 }
 
-func (s Strings) Len() int {
-	return len(s)
+func (ss Strings) Len() int {
+	return len(ss)
 }
