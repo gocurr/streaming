@@ -4,32 +4,38 @@ import (
 	"container/heap"
 )
 
-// empty slice
-var emptySlice = make(Slice, 0)
+const (
+	// default capacity of pipelines
+	defaultPipelines = 16
 
-// empty stream
-var emptyStream = &Stream{slice: emptySlice}
+	// default capacity of buffered-channel
+	defaultChanBufSize = 1 << 10
+)
 
-// Stream Slice holder
+var (
+	// empty slice
+	emptySlice = make(Slice, 0)
+
+	// empty stream
+	emptyStream = &Stream{slice: emptySlice}
+)
+
+// Stream a sequence of elements supporting aggregate operations
+//
+// To perform a computation, stream operations composed into a stream pipeline
 type Stream struct {
-	chans []chan interface{}
-	slice Slicer
+	pipelines []chan interface{} // pipeline channels
+	slice     Slicer
 }
 
-// defaultChans default capacity of chan-slice
-const defaultChans = 16
-
-// defaultChanBufSize default capacity of buffered-channel
-const defaultChanBufSize = 1024
-
-// newStream Stream constructor
+// newStream returns a new Stream
 func newStream(slice Slicer) *Stream {
 	if slice == nil {
 		return emptyStream
 	}
 	return &Stream{
-		chans: make([]chan interface{}, 0, defaultChans),
-		slice: slice,
+		pipelines: make([]chan interface{}, 0, defaultPipelines),
+		slice:     slice,
 	}
 }
 
@@ -40,11 +46,11 @@ func Of(slicer Slicer) *Stream {
 	return newStream(slicer)
 }
 
-// prevChan returns previous channel
-func (s *Stream) prevChan() chan interface{} {
+// returns previous pipeline
+func (s *Stream) prevPipeline() chan interface{} {
 	var ch chan interface{}
-	if len(s.chans) == 0 {
-		ch = s.curChan()
+	if len(s.pipelines) == 0 {
+		ch = s.curPipeline()
 		if s.slice.Len() > 0 {
 			ch <- s.slice.Index(0)
 		}
@@ -55,21 +61,21 @@ func (s *Stream) prevChan() chan interface{} {
 			close(ch)
 		}()
 	} else {
-		ch = s.chans[len(s.chans)-1]
+		ch = s.pipelines[len(s.pipelines)-1]
 	}
 	return ch
 }
 
-// curChan returns current channel
-func (s *Stream) curChan() chan interface{} {
+// returns current pipeline
+func (s *Stream) curPipeline() chan interface{} {
 	cur := make(chan interface{}, defaultChanBufSize)
-	s.chans = append(s.chans, cur)
+	s.pipelines = append(s.pipelines, cur)
 	return cur
 }
 
 // ForEach performs an action for each element of this stream.
 func (s *Stream) ForEach(act func(interface{})) {
-	prev := s.prevChan()
+	prev := s.prevPipeline()
 	for v := range prev {
 		act(v)
 	}
@@ -79,8 +85,8 @@ func (s *Stream) ForEach(act func(interface{})) {
 // additionally performing the provided action on each element
 // as elements are consumed from the resulting stream
 func (s *Stream) Peek(act func(interface{})) *Stream {
-	prev := s.prevChan()
-	cur := s.curChan()
+	prev := s.prevPipeline()
+	cur := s.curPipeline()
 
 	go func() {
 		for v := range prev {
@@ -96,8 +102,8 @@ func (s *Stream) Peek(act func(interface{})) *Stream {
 // Limit returns a stream consisting of the elements of this stream,
 // truncated to be no longer than max-size in length.
 func (s *Stream) Limit(n int) *Stream {
-	prev := s.prevChan()
-	cur := s.curChan()
+	prev := s.prevPipeline()
+	cur := s.curPipeline()
 
 	go func() {
 		var counter int
@@ -120,12 +126,12 @@ func (s *Stream) Limit(n int) *Stream {
 // of the stream. If the stream contains fewer than n elements then
 // emptyStream will be returned.
 func (s *Stream) Skip(n int) *Stream {
-	prev := s.prevChan()
+	prev := s.prevPipeline()
 	if n <= 0 {
 		return s
 	}
 
-	cur := s.curChan()
+	cur := s.curPipeline()
 
 	go func() {
 		var counter int
@@ -146,8 +152,8 @@ func (s *Stream) Skip(n int) *Stream {
 // Map returns a stream consisting of the results (any type)
 // of applying the given function to the elements of this stream.
 func (s *Stream) Map(apply func(interface{}) interface{}) *Stream {
-	prev := s.prevChan()
-	cur := s.curChan()
+	prev := s.prevPipeline()
+	cur := s.curPipeline()
 
 	go func() {
 		for v := range prev {
@@ -162,8 +168,8 @@ func (s *Stream) Map(apply func(interface{}) interface{}) *Stream {
 // FlatMap returns a stream consisting of the results
 // of replacing each element of this stream
 func (s *Stream) FlatMap(apply func(interface{}) Slicer) *Stream {
-	prev := s.prevChan()
-	cur := s.curChan()
+	prev := s.prevPipeline()
+	cur := s.curPipeline()
 
 	go func() {
 		for v := range prev {
@@ -187,7 +193,7 @@ func (s *Stream) FlatMap(apply func(interface{}) Slicer) *Stream {
 //
 // When steam is empty, Reduce returns nil
 func (s *Stream) Reduce(compare func(a, b interface{}) bool) interface{} {
-	prev := s.prevChan()
+	prev := s.prevPipeline()
 	if len(prev) == 0 {
 		return nil
 	}
@@ -204,8 +210,8 @@ func (s *Stream) Reduce(compare func(a, b interface{}) bool) interface{} {
 // Filter returns a stream consisting of the elements of this stream
 // that match the given predicate.
 func (s *Stream) Filter(predicate func(interface{}) bool) *Stream {
-	prev := s.prevChan()
-	cur := s.curChan()
+	prev := s.prevPipeline()
+	cur := s.curPipeline()
 
 	go func() {
 		for v := range prev {
@@ -224,7 +230,7 @@ func (s *Stream) Filter(predicate func(interface{}) bool) *Stream {
 func (s *Stream) FilterCount(predicate func(interface{}) bool) int {
 	var c int
 
-	prev := s.prevChan()
+	prev := s.prevPipeline()
 	for v := range prev {
 		if predicate(v) {
 			c++
@@ -238,8 +244,8 @@ var nothing struct{}
 // Distinct returns a stream consisting of the distinct elements
 // with original order
 func (s *Stream) Distinct() *Stream {
-	prev := s.prevChan()
-	cur := s.curChan()
+	prev := s.prevPipeline()
+	cur := s.curPipeline()
 
 	go func() {
 		var memory = make(map[interface{}]struct{})
@@ -259,7 +265,7 @@ func (s *Stream) Distinct() *Stream {
 func (s *Stream) Collect() Slicer {
 	var slice Slice
 
-	prev := s.prevChan()
+	prev := s.prevPipeline()
 	for v := range prev {
 		slice = append(slice, v)
 	}
@@ -270,7 +276,7 @@ func (s *Stream) Collect() Slicer {
 // Count returns the count of elements in this stream
 func (s *Stream) Count() int {
 	var counter int
-	for range s.prevChan() {
+	for range s.prevPipeline() {
 		counter++
 	}
 	return counter
@@ -286,7 +292,7 @@ func (s *Stream) IsEmpty() bool {
 func (s *Stream) Sum(sum func(interface{}) float64) float64 {
 	var r float64
 
-	prev := s.prevChan()
+	prev := s.prevPipeline()
 	for v := range prev {
 		r += sum(v)
 	}
@@ -299,7 +305,7 @@ func (s *Stream) Sum(sum func(interface{}) float64) float64 {
 // on all elements if not necessary for determining the result.
 // If the stream is empty then false is returned and the predicate is not evaluated.
 func (s *Stream) AnyMatch(predicate func(interface{}) bool) bool {
-	prev := s.prevChan()
+	prev := s.prevPipeline()
 	for v := range prev {
 		if predicate(v) {
 			return true
@@ -313,7 +319,7 @@ func (s *Stream) AnyMatch(predicate func(interface{}) bool) bool {
 // on all elements if not necessary for determining the result.
 // If the stream is empty then true is returned and the predicate is not evaluated.
 func (s *Stream) AllMatch(predicate func(interface{}) bool) bool {
-	prev := s.prevChan()
+	prev := s.prevPipeline()
 	for v := range prev {
 		if predicate(v) {
 			continue
@@ -335,7 +341,7 @@ func (s *Stream) NonMatch(predicate func(interface{}) bool) bool {
 // FindFirst returns the first element of the stream,
 // or nil if the stream is empty
 func (s *Stream) FindFirst() interface{} {
-	prev := s.prevChan()
+	prev := s.prevPipeline()
 	if len(prev) == 0 {
 		return nil
 	}
@@ -352,7 +358,7 @@ func (s *Stream) Element(i int) interface{} {
 
 	var counter int
 
-	prev := s.prevChan()
+	prev := s.prevPipeline()
 	for v := range prev {
 		if counter == i {
 			return v
@@ -363,13 +369,13 @@ func (s *Stream) Element(i int) interface{} {
 	return nil
 }
 
-// CountVal Count-Val wrapper
+// CountVal wraps Count-Val
 type CountVal struct {
 	Count int
 	Val   interface{}
 }
 
-// An cvHeap is a max-heap of CountVals.
+// An cvHeap is a max-heap of CountValues.
 type cvHeap []CountVal
 
 func (h cvHeap) Len() int           { return len(h) }
@@ -392,8 +398,8 @@ func (h *cvHeap) Pop() interface{} {
 
 // Top returns a stream consisting of n elements that appear most often
 func (s *Stream) Top(n int) *Stream {
-	prev := s.prevChan()
-	cur := s.curChan()
+	prev := s.prevPipeline()
+	cur := s.curPipeline()
 	if n < 1 {
 		close(cur)
 		return s
