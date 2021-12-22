@@ -7,7 +7,7 @@ type CountVal struct {
 }
 
 // An cvHeap is a max-heap of CountValues.
-type cvHeap []CountVal
+type cvHeap []*CountVal
 
 func (h cvHeap) Len() int           { return len(h) }
 func (h cvHeap) Less(i, j int) bool { return h[i].Count > h[j].Count }
@@ -16,7 +16,7 @@ func (h cvHeap) Swap(i, j int)      { h[i], h[j] = h[j], h[i] }
 func (h *cvHeap) Push(x interface{}) {
 	// Push and Pop use pointer receivers because they modify the slice's length,
 	// not just its contents.
-	*h = append(*h, x.(CountVal))
+	*h = append(*h, x.(*CountVal))
 }
 
 func (h *cvHeap) Pop() interface{} {

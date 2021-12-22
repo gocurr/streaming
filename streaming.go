@@ -391,7 +391,7 @@ func (s *Stream) Top(n int) *Stream {
 
 		var cvs cvHeap
 		for v, count := range memory {
-			cvs = append(cvs, CountVal{
+			cvs = append(cvs, &CountVal{
 				Count: count,
 				Val:   v,
 			})

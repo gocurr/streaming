@@ -213,8 +213,9 @@ func Test_Element(t *testing.T) {
 var floats = Floats{1, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 44, 5, 5, 5}
 
 func Test_TopN(t *testing.T) {
-	top := Of(floats).Top(1).Collect()
-	fmt.Printf("%v\n", top)
+	Of(floats).Top(3).ForEach(func(i interface{}) {
+		fmt.Printf("%v\n", i.(*CountVal).Val)
+	})
 }
 
 func TestCopy(t *testing.T) {

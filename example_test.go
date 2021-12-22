@@ -27,7 +27,7 @@ func Example_stream() {
 		}).
 		Top(5).
 		ForEach(func(i interface{}) {
-			v := i.(streaming.CountVal)
+			v := i.(*streaming.CountVal)
 			fmt.Printf("%s ", v.Val)
 		})
 	fmt.Println("?")
