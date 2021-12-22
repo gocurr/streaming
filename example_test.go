@@ -13,18 +13,24 @@ func Example_stream() {
 		return
 	}
 
-	be := streaming.Of(streaming.Strings{string(file)}).
+	streaming.
+		Of(streaming.Strings{string(file)}).
 		FlatMap(func(i interface{}) streaming.Slicer {
 			return streaming.Strings(strings.Split(i.(string), "\n"))
-		}).
-		Filter(func(i interface{}) bool {
-			return i.(string) != ""
 		}).
 		FlatMap(func(i interface{}) streaming.Slicer {
 			return streaming.Strings(strings.Split(i.(string), " "))
 		}).
-		Top(100).Element(9)
-	fmt.Println(be.(streaming.CountVal).Val)
+		Filter(func(i interface{}) bool {
+			s := i.(string)
+			return s == "be" || s == "or" || s == "not" || s == "to"
+		}).
+		Top(5).
+		ForEach(func(i interface{}) {
+			v := i.(streaming.CountVal)
+			fmt.Printf("%s ", v.Val)
+		})
+	fmt.Println("?")
 
-	// Output: be
+	// Output: to be or not ?
 }
