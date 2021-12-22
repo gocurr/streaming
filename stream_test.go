@@ -94,15 +94,15 @@ func Test_Limit(t *testing.T) {
 }
 
 func Test_Array(t *testing.T) {
-	var arr = ints
-	s := Of(arr)
+	s := Of(ints)
+	cs := s.Copy()
 	s.Map(func(i interface{}) interface{} {
 		return math.Pow(float64(i.(int)), 2)
 	}).ForEach(func(i interface{}) {
 		fmt.Printf("%v\n", i)
 	})
 	fmt.Println()
-	println(s.Count())
+	println(cs.Count())
 }
 
 func TestStream_Reduce(t *testing.T) {
@@ -130,15 +130,18 @@ func Test_Sum(t *testing.T) {
 }
 
 func Test_Match(t *testing.T) {
-	println(Of(ints).AnyMatch(func(i interface{}) bool {
+	of := Of(ints)
+	of1 := of.Copy()
+	of2 := of.Copy()
+	println(of.AnyMatch(func(i interface{}) bool {
 		return i.(int) > 2
 	}))
 
-	println(Of(ints).AllMatch(func(i interface{}) bool {
+	println(of1.AllMatch(func(i interface{}) bool {
 		return i.(int) > 2
 	}))
 
-	println(Of(ints).NonMatch(func(i interface{}) bool {
+	println(of2.NonMatch(func(i interface{}) bool {
 		return i.(int) > 2
 	}))
 }
