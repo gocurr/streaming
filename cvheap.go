@@ -1,6 +1,6 @@
 package streaming
 
-// CountVal wraps Count-Val
+// CountVal wraps Count and Val
 type CountVal struct {
 	Count int
 	Val   interface{}
