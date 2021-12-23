@@ -41,7 +41,7 @@ func (s *Stream) FilterCount(predicate func(interface{}) bool) int {
 	return c
 }
 
-// Collect returns Slicer
+// Collect returns a Slicer consisting of the elements in this stream
 func (s *Stream) Collect() Slicer {
 	var slice Slice
 
