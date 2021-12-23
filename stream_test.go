@@ -14,20 +14,12 @@ type Value struct {
 
 type Values []*Value
 
-func (vs Values) Set(i int, v interface{}) {
-	vs[i] = v.(*Value)
-}
-
 func (vs Values) Index(i int) interface{} {
 	return vs[i]
 }
 
 func (vs Values) Len() int {
 	return len(vs)
-}
-
-func (vs Values) Sub(i, j int) Slicer {
-	return vs[i:j]
 }
 
 func Test_Values(t *testing.T) {
