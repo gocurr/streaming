@@ -6,7 +6,7 @@ type CountVal struct {
 	Val   interface{}
 }
 
-// An cvHeap is a max-heap of CountValues.
+// A cvHeap is a max-heap of CountVals
 type cvHeap []*CountVal
 
 func (h cvHeap) Len() int           { return len(h) }
