@@ -25,7 +25,8 @@ var (
 // To perform a computation, stream operations composed into a stream pipeline
 type Stream struct {
 	pipeline []chan interface{} // pipeline channels
-	slice    Slicer
+	slice    Slicer             // which holds the elements to process
+	closed   bool               // to report sink-methods invoked
 }
 
 // newStream returns a new Stream
@@ -46,10 +47,21 @@ func Of(slicer Slicer) *Stream {
 	return newStream(slicer)
 }
 
+// Stream closed check.
+//
+// It will panic when stream is closed
+func (s *Stream) valid() {
+	if s.closed {
+		panic("stream has already been operated upon")
+	}
+}
+
 // Peek returns the same stream,
 // additionally performing the provided action on each element
 // as elements are consumed from the resulting stream
 func (s *Stream) Peek(act func(interface{})) *Stream {
+	s.valid()
+
 	prev := s.prevPipe()
 	cur := s.curPipe()
 
@@ -67,6 +79,8 @@ func (s *Stream) Peek(act func(interface{})) *Stream {
 // Limit returns the same stream consisting of the elements,
 // truncated to be no longer than max-size in length.
 func (s *Stream) Limit(n int) *Stream {
+	s.valid()
+
 	prev := s.prevPipe()
 	cur := s.curPipe()
 
@@ -91,6 +105,8 @@ func (s *Stream) Limit(n int) *Stream {
 // If the stream contains fewer than n elements then
 // emptyStream will be returned.
 func (s *Stream) Skip(n int) *Stream {
+	s.valid()
+
 	prev := s.prevPipe()
 	if n <= 0 {
 		return s
@@ -117,6 +133,8 @@ func (s *Stream) Skip(n int) *Stream {
 // Map returns the same stream consisting of the results (any type)
 // of applying the given function to the elements.
 func (s *Stream) Map(apply func(interface{}) interface{}) *Stream {
+	s.valid()
+
 	prev := s.prevPipe()
 	cur := s.curPipe()
 
@@ -133,6 +151,8 @@ func (s *Stream) Map(apply func(interface{}) interface{}) *Stream {
 // FlatMap returns the same stream consisting of the results
 // of replacing each element
 func (s *Stream) FlatMap(apply func(interface{}) Slicer) *Stream {
+	s.valid()
+
 	prev := s.prevPipe()
 	cur := s.curPipe()
 
@@ -156,6 +176,8 @@ func (s *Stream) FlatMap(apply func(interface{}) Slicer) *Stream {
 // Filter returns the same stream consisting of the elements
 // that match the given predicate.
 func (s *Stream) Filter(predicate func(interface{}) bool) *Stream {
+	s.valid()
+
 	prev := s.prevPipe()
 	cur := s.curPipe()
 
@@ -177,6 +199,8 @@ var discard struct{}
 // Distinct returns the same stream consisting of the distinct elements
 // with original order
 func (s *Stream) Distinct() *Stream {
+	s.valid()
+
 	prev := s.prevPipe()
 	cur := s.curPipe()
 
@@ -197,6 +221,8 @@ func (s *Stream) Distinct() *Stream {
 // Top returns the same stream consisting of n elements
 // that appear most often
 func (s *Stream) Top(n int) *Stream {
+	s.valid()
+
 	prev := s.prevPipe()
 	cur := s.curPipe()
 	if n < 1 {

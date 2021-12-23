@@ -1,14 +1,22 @@
 package streaming
 
-// ForEach performs an action for each element .
+// Set closed true to tell that
+// the stream has already been operated upon.
+func (s *Stream) close() {
+	s.closed = true
+}
+
+// ForEach performs an action for each element.
 func (s *Stream) ForEach(act func(interface{})) {
 	prev := s.prevPipe()
 	for v := range prev {
 		act(v)
 	}
+
+	s.close()
 }
 
-// Reduce performs a reduction on the elements ,
+// Reduce performs a reduction on the elements,
 // using the provided comparing function
 //
 // When steam is empty, Reduce returns nil
@@ -24,6 +32,7 @@ func (s *Stream) Reduce(compare func(a, b interface{}) bool) interface{} {
 		}
 	}
 
+	s.close()
 	return t
 }
 
@@ -38,6 +47,8 @@ func (s *Stream) FilterCount(predicate func(interface{}) bool) int {
 			c++
 		}
 	}
+
+	s.close()
 	return c
 }
 
@@ -50,6 +61,7 @@ func (s *Stream) Collect() Slicer {
 		slice = append(slice, v)
 	}
 
+	s.close()
 	return slice
 }
 
@@ -59,6 +71,8 @@ func (s *Stream) Count() int {
 	for range s.prevPipe() {
 		counter++
 	}
+
+	s.close()
 	return counter
 }
 
@@ -77,6 +91,7 @@ func (s *Stream) Sum(sum func(interface{}) float64) float64 {
 		r += sum(v)
 	}
 
+	s.close()
 	return r
 }
 
@@ -91,10 +106,12 @@ func (s *Stream) AnyMatch(predicate func(interface{}) bool) bool {
 			return true
 		}
 	}
+
+	s.close()
 	return false
 }
 
-// AllMatch returns whether all elements  match
+// AllMatch returns whether all elements match
 // the provided predicate. May not evaluate the predicated
 // on all elements if not necessary for determining the result.
 // If the stream is empty then true is returned and the predicate is not evaluated.
@@ -107,10 +124,11 @@ func (s *Stream) AllMatch(predicate func(interface{}) bool) bool {
 		return false
 	}
 
+	s.close()
 	return true
 }
 
-// NonMatch returns whether no elements  match
+// NonMatch returns whether no elements match
 // the provided predicate. May not evaluate the predicated
 // on all elements if not necessary for determining the result.
 // If the stream is empty then true is returned and the predicate is not evaluated.
@@ -125,6 +143,8 @@ func (s *Stream) FindFirst() interface{} {
 	if len(prev) == 0 {
 		return nil
 	}
+
+	s.close()
 	return <-prev
 }
 
@@ -146,5 +166,6 @@ func (s *Stream) Element(i int) interface{} {
 		counter++
 	}
 
+	s.close()
 	return nil
 }
