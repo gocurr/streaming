@@ -46,41 +46,6 @@ func Of(slicer Slicer) *Stream {
 	return newStream(slicer)
 }
 
-// returns previous pipe
-func (s *Stream) prevPipe() chan interface{} {
-	var ch chan interface{}
-	if len(s.pipeline) == 0 {
-		ch = s.curPipe()
-		if s.slice.Len() > 0 {
-			ch <- s.slice.Index(0)
-		}
-		go func() {
-			for i := 1; i < s.slice.Len(); i++ {
-				ch <- s.slice.Index(i)
-			}
-			close(ch)
-		}()
-	} else {
-		ch = s.pipeline[len(s.pipeline)-1]
-	}
-	return ch
-}
-
-// returns current pipe
-func (s *Stream) curPipe() chan interface{} {
-	cur := make(chan interface{}, defaultChanBufSize)
-	s.pipeline = append(s.pipeline, cur)
-	return cur
-}
-
-// ForEach performs an action for each element of this stream.
-func (s *Stream) ForEach(act func(interface{})) {
-	prev := s.prevPipe()
-	for v := range prev {
-		act(v)
-	}
-}
-
 // Peek returns the same stream,
 // additionally performing the provided action on each element
 // as elements are consumed from the resulting stream
@@ -99,7 +64,7 @@ func (s *Stream) Peek(act func(interface{})) *Stream {
 	return s
 }
 
-// Limit returns a stream consisting of the elements of this stream,
+// Limit returns the same stream consisting of the elements,
 // truncated to be no longer than max-size in length.
 func (s *Stream) Limit(n int) *Stream {
 	prev := s.prevPipe()
@@ -121,9 +86,9 @@ func (s *Stream) Limit(n int) *Stream {
 	return s
 }
 
-// Skip returns a stream consisting of the remaining elements
-// of this stream after discarding the first n elements
-// of the stream. If the stream contains fewer than n elements then
+// Skip returns the same stream consisting of the remaining elements
+// after discarding the first n elements of the stream.
+// If the stream contains fewer than n elements then
 // emptyStream will be returned.
 func (s *Stream) Skip(n int) *Stream {
 	prev := s.prevPipe()
@@ -149,8 +114,8 @@ func (s *Stream) Skip(n int) *Stream {
 	return s
 }
 
-// Map returns a stream consisting of the results (any type)
-// of applying the given function to the elements of this stream.
+// Map returns the same stream consisting of the results (any type)
+// of applying the given function to the elements.
 func (s *Stream) Map(apply func(interface{}) interface{}) *Stream {
 	prev := s.prevPipe()
 	cur := s.curPipe()
@@ -165,8 +130,8 @@ func (s *Stream) Map(apply func(interface{}) interface{}) *Stream {
 	return s
 }
 
-// FlatMap returns a stream consisting of the results
-// of replacing each element of this stream
+// FlatMap returns the same stream consisting of the results
+// of replacing each element
 func (s *Stream) FlatMap(apply func(interface{}) Slicer) *Stream {
 	prev := s.prevPipe()
 	cur := s.curPipe()
@@ -188,26 +153,7 @@ func (s *Stream) FlatMap(apply func(interface{}) Slicer) *Stream {
 	return s
 }
 
-// Reduce performs a reduction on the elements of this stream,
-// using the provided comparing function
-//
-// When steam is empty, Reduce returns nil
-func (s *Stream) Reduce(compare func(a, b interface{}) bool) interface{} {
-	prev := s.prevPipe()
-	if len(prev) == 0 {
-		return nil
-	}
-	t := <-prev
-	for v := range prev {
-		if compare(v, t) {
-			t = v
-		}
-	}
-
-	return t
-}
-
-// Filter returns a stream consisting of the elements of this stream
+// Filter returns the same stream consisting of the elements
 // that match the given predicate.
 func (s *Stream) Filter(predicate func(interface{}) bool) *Stream {
 	prev := s.prevPipe()
@@ -225,33 +171,20 @@ func (s *Stream) Filter(predicate func(interface{}) bool) *Stream {
 	return s
 }
 
-// FilterCount returns count of the elements of this stream
-// that match the given predicate.
-func (s *Stream) FilterCount(predicate func(interface{}) bool) int {
-	var c int
+// discards values in map
+var discard struct{}
 
-	prev := s.prevPipe()
-	for v := range prev {
-		if predicate(v) {
-			c++
-		}
-	}
-	return c
-}
-
-var nothing struct{}
-
-// Distinct returns a stream consisting of the distinct elements
+// Distinct returns the same stream consisting of the distinct elements
 // with original order
 func (s *Stream) Distinct() *Stream {
 	prev := s.prevPipe()
 	cur := s.curPipe()
 
 	go func() {
-		var memory = make(map[interface{}]struct{})
+		var distinct = make(map[interface{}]struct{})
 		for v := range prev {
-			if _, ok := memory[v]; !ok {
-				memory[v] = nothing
+			if _, ok := distinct[v]; !ok {
+				distinct[v] = discard
 				cur <- v
 			}
 		}
@@ -261,115 +194,8 @@ func (s *Stream) Distinct() *Stream {
 	return s
 }
 
-// Collect returns Slicer of this stream
-func (s *Stream) Collect() Slicer {
-	var slice Slice
-
-	prev := s.prevPipe()
-	for v := range prev {
-		slice = append(slice, v)
-	}
-
-	return slice
-}
-
-// Count returns the count of elements in this stream
-func (s *Stream) Count() int {
-	var counter int
-	for range s.prevPipe() {
-		counter++
-	}
-	return counter
-}
-
-// IsEmpty reports stream is empty
-func (s *Stream) IsEmpty() bool {
-	return s.Count() == 0
-}
-
-// Sum returns the sum of elements in this stream
-// using the provided sum function
-func (s *Stream) Sum(sum func(interface{}) float64) float64 {
-	var r float64
-
-	prev := s.prevPipe()
-	for v := range prev {
-		r += sum(v)
-	}
-
-	return r
-}
-
-// AnyMatch returns whether any elements of this stream match
-// the provided predicate. May not evaluate the predicated
-// on all elements if not necessary for determining the result.
-// If the stream is empty then false is returned and the predicate is not evaluated.
-func (s *Stream) AnyMatch(predicate func(interface{}) bool) bool {
-	prev := s.prevPipe()
-	for v := range prev {
-		if predicate(v) {
-			return true
-		}
-	}
-	return false
-}
-
-// AllMatch returns whether all elements of this stream match
-// the provided predicate. May not evaluate the predicated
-// on all elements if not necessary for determining the result.
-// If the stream is empty then true is returned and the predicate is not evaluated.
-func (s *Stream) AllMatch(predicate func(interface{}) bool) bool {
-	prev := s.prevPipe()
-	for v := range prev {
-		if predicate(v) {
-			continue
-		}
-		return false
-	}
-
-	return true
-}
-
-// NonMatch returns whether no elements of this stream match
-// the provided predicate. May not evaluate the predicated
-// on all elements if not necessary for determining the result.
-// If the stream is empty then true is returned and the predicate is not evaluated.
-func (s *Stream) NonMatch(predicate func(interface{}) bool) bool {
-	return !s.AllMatch(predicate)
-}
-
-// FindFirst returns the first element of the stream,
-// or nil if the stream is empty
-func (s *Stream) FindFirst() interface{} {
-	prev := s.prevPipe()
-	if len(prev) == 0 {
-		return nil
-	}
-	return <-prev
-}
-
-// Element returns the element at the specified position in this stream
-//
-// nil is returned when index is out of range
-func (s *Stream) Element(i int) interface{} {
-	if i < 0 {
-		return nil
-	}
-
-	var counter int
-
-	prev := s.prevPipe()
-	for v := range prev {
-		if counter == i {
-			return v
-		}
-		counter++
-	}
-
-	return nil
-}
-
-// Top returns a stream consisting of n elements that appear most often
+// Top returns the same stream consisting of n elements
+// that appear most often
 func (s *Stream) Top(n int) *Stream {
 	prev := s.prevPipe()
 	cur := s.curPipe()
