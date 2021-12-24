@@ -13,10 +13,10 @@ func (s *Stream) prevPipe() chan interface{} {
 			ch <- s.slice.Index(0)
 		}
 		go func() {
+			defer close(ch)
 			for i := 1; i < s.slice.Len(); i++ {
 				ch <- s.slice.Index(i)
 			}
-			close(ch)
 		}()
 	} else {
 		ch = s.pipeline[len(s.pipeline)-1]

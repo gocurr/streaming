@@ -64,11 +64,11 @@ func (s *Stream) Peek(act func(interface{})) *Stream {
 	cur := s.curPipe()
 
 	go func() {
+		defer close(cur)
 		for v := range prev {
 			act(v)
 			cur <- v
 		}
-		close(cur)
 	}()
 
 	return s
@@ -83,6 +83,7 @@ func (s *Stream) Limit(n int) *Stream {
 	cur := s.curPipe()
 
 	go func() {
+		defer close(cur)
 		var counter int
 		for v := range prev {
 			if counter < n {
@@ -92,7 +93,6 @@ func (s *Stream) Limit(n int) *Stream {
 			}
 			break
 		}
-		close(cur)
 	}()
 
 	return s
@@ -113,6 +113,7 @@ func (s *Stream) Skip(n int) *Stream {
 	cur := s.curPipe()
 
 	go func() {
+		defer close(cur)
 		var counter int
 		for v := range prev {
 			if counter < n {
@@ -122,7 +123,6 @@ func (s *Stream) Skip(n int) *Stream {
 			cur <- v
 			counter++
 		}
-		close(cur)
 	}()
 
 	return s
@@ -137,10 +137,10 @@ func (s *Stream) Map(apply func(interface{}) interface{}) *Stream {
 	cur := s.curPipe()
 
 	go func() {
+		defer close(cur)
 		for v := range prev {
 			cur <- apply(v)
 		}
-		close(cur)
 	}()
 
 	return s
@@ -155,6 +155,7 @@ func (s *Stream) FlatMap(apply func(interface{}) Slicer) *Stream {
 	cur := s.curPipe()
 
 	go func() {
+		defer close(cur)
 		for v := range prev {
 			vv := apply(v)
 			if vv == nil {
@@ -165,7 +166,6 @@ func (s *Stream) FlatMap(apply func(interface{}) Slicer) *Stream {
 				cur <- ele
 			}
 		}
-		close(cur)
 	}()
 
 	return s
@@ -180,12 +180,12 @@ func (s *Stream) Filter(predicate func(interface{}) bool) *Stream {
 	cur := s.curPipe()
 
 	go func() {
+		defer close(cur)
 		for v := range prev {
 			if predicate(v) {
 				cur <- v
 			}
 		}
-		close(cur)
 	}()
 
 	return s
@@ -203,6 +203,7 @@ func (s *Stream) Distinct() *Stream {
 	cur := s.curPipe()
 
 	go func() {
+		defer close(cur)
 		var distinct = make(map[interface{}]struct{})
 		for v := range prev {
 			if _, ok := distinct[v]; !ok {
@@ -210,7 +211,6 @@ func (s *Stream) Distinct() *Stream {
 				cur <- v
 			}
 		}
-		close(cur)
 	}()
 
 	return s
@@ -229,6 +229,7 @@ func (s *Stream) Top(n int) *Stream {
 	}
 
 	go func() {
+		defer close(cur)
 		var m = make(map[interface{}]int)
 		for v := range prev {
 			if _, ok := m[v]; !ok {
@@ -258,7 +259,6 @@ func (s *Stream) Top(n int) *Stream {
 			}
 			counter++
 		}
-		close(cur)
 	}()
 
 	return s
