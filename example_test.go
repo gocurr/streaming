@@ -45,13 +45,10 @@ func Example_largeFile() {
 	file := read()
 	for i := 0; i < 10; i++ {
 		// enlarge the testdata
-		// size = original-size << 10
-		// size = 567198*1024 = 580810752 ≈ 550MB
+		// size = original_size << 10 ≈ 550 MB
 		file = append(file, file...)
 	}
-	fmt.Println(len(file))
-	// lower than 2GB memory cost in general
+	// about 1.5 GB memory cost in general
 	handle(file)
-	// Output: 580810752
-	// to be or not ?
+	// Output: to be or not ?
 }
