@@ -1,6 +1,6 @@
 package streaming
 
-// Set closed true to tell that
+// close sets closed true to tell that
 // the stream has already been operated upon.
 func (s *Stream) close() {
 	s.closed = true
@@ -17,9 +17,9 @@ func (s *Stream) ForEach(act func(interface{})) {
 }
 
 // Reduce performs a reduction on the elements,
-// using the provided comparing function
+// using the provided comparing function.
 //
-// When steam is empty, Reduce returns nil
+// nil is returned when the steam is empty.
 func (s *Stream) Reduce(compare func(a, b interface{}) bool) interface{} {
 	defer s.close()
 
@@ -51,7 +51,7 @@ func (s *Stream) FilterCount(predicate func(interface{}) bool) int {
 	return c
 }
 
-// Collect returns a Slicer consisting of the elements in this stream
+// Collect returns a Slicer consisting of the elements in this stream.
 func (s *Stream) Collect() Slicer {
 	defer s.close()
 
@@ -63,7 +63,7 @@ func (s *Stream) Collect() Slicer {
 	return slice
 }
 
-// Count returns the count of elements in this stream
+// Count returns the count of elements in this stream.
 func (s *Stream) Count() int {
 	defer s.close()
 
@@ -74,13 +74,13 @@ func (s *Stream) Count() int {
 	return counter
 }
 
-// IsEmpty reports stream is empty
+// IsEmpty reports whether the stream is empty.
 func (s *Stream) IsEmpty() bool {
 	return s.Count() == 0
 }
 
 // Sum returns the sum of elements in this stream
-// using the provided sum function
+// using the provided sum function.
 func (s *Stream) Sum(sum func(interface{}) float64) float64 {
 	defer s.close()
 
@@ -133,8 +133,9 @@ func (s *Stream) NonMatch(predicate func(interface{}) bool) bool {
 	return !s.AllMatch(predicate)
 }
 
-// FindFirst returns the first element of the stream,
-// or nil if the stream is empty
+// FindFirst returns the first element of the stream.
+//
+// nil is returned when the stream is empty.
 func (s *Stream) FindFirst() interface{} {
 	defer s.close()
 
@@ -145,9 +146,9 @@ func (s *Stream) FindFirst() interface{} {
 	return <-prev
 }
 
-// Element returns the element at the specified position in this stream
+// Element returns the element at the specified position in this stream.
 //
-// nil is returned when index is out of range
+// nil is returned when index is out of range.
 func (s *Stream) Element(i int) interface{} {
 	defer s.close()
 
