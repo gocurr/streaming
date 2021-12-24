@@ -8,12 +8,12 @@ func (s *Stream) close() {
 
 // ForEach performs an action for each element.
 func (s *Stream) ForEach(act func(interface{})) {
+	defer s.close()
+
 	prev := s.prevPipe()
 	for v := range prev {
 		act(v)
 	}
-
-	s.close()
 }
 
 // Reduce performs a reduction on the elements,
@@ -21,6 +21,8 @@ func (s *Stream) ForEach(act func(interface{})) {
 //
 // When steam is empty, Reduce returns nil
 func (s *Stream) Reduce(compare func(a, b interface{}) bool) interface{} {
+	defer s.close()
+
 	prev := s.prevPipe()
 	if len(prev) == 0 {
 		return nil
@@ -31,48 +33,44 @@ func (s *Stream) Reduce(compare func(a, b interface{}) bool) interface{} {
 			t = v
 		}
 	}
-
-	s.close()
 	return t
 }
 
 // FilterCount returns count of the elements
 // that match the given predicate.
 func (s *Stream) FilterCount(predicate func(interface{}) bool) int {
-	var c int
+	defer s.close()
 
+	var c int
 	prev := s.prevPipe()
 	for v := range prev {
 		if predicate(v) {
 			c++
 		}
 	}
-
-	s.close()
 	return c
 }
 
 // Collect returns a Slicer consisting of the elements in this stream
 func (s *Stream) Collect() Slicer {
-	var slice Slice
+	defer s.close()
 
+	var slice Slice
 	prev := s.prevPipe()
 	for v := range prev {
 		slice = append(slice, v)
 	}
-
-	s.close()
 	return slice
 }
 
 // Count returns the count of elements in this stream
 func (s *Stream) Count() int {
+	defer s.close()
+
 	var counter int
 	for range s.prevPipe() {
 		counter++
 	}
-
-	s.close()
 	return counter
 }
 
@@ -84,14 +82,13 @@ func (s *Stream) IsEmpty() bool {
 // Sum returns the sum of elements in this stream
 // using the provided sum function
 func (s *Stream) Sum(sum func(interface{}) float64) float64 {
-	var r float64
+	defer s.close()
 
+	var r float64
 	prev := s.prevPipe()
 	for v := range prev {
 		r += sum(v)
 	}
-
-	s.close()
 	return r
 }
 
@@ -100,14 +97,14 @@ func (s *Stream) Sum(sum func(interface{}) float64) float64 {
 // on all elements if not necessary for determining the result.
 // If the stream is empty then false is returned and the predicate is not evaluated.
 func (s *Stream) AnyMatch(predicate func(interface{}) bool) bool {
+	defer s.close()
+
 	prev := s.prevPipe()
 	for v := range prev {
 		if predicate(v) {
 			return true
 		}
 	}
-
-	s.close()
 	return false
 }
 
@@ -116,6 +113,8 @@ func (s *Stream) AnyMatch(predicate func(interface{}) bool) bool {
 // on all elements if not necessary for determining the result.
 // If the stream is empty then true is returned and the predicate is not evaluated.
 func (s *Stream) AllMatch(predicate func(interface{}) bool) bool {
+	defer s.close()
+
 	prev := s.prevPipe()
 	for v := range prev {
 		if predicate(v) {
@@ -123,8 +122,6 @@ func (s *Stream) AllMatch(predicate func(interface{}) bool) bool {
 		}
 		return false
 	}
-
-	s.close()
 	return true
 }
 
@@ -139,12 +136,12 @@ func (s *Stream) NonMatch(predicate func(interface{}) bool) bool {
 // FindFirst returns the first element of the stream,
 // or nil if the stream is empty
 func (s *Stream) FindFirst() interface{} {
+	defer s.close()
+
 	prev := s.prevPipe()
 	if len(prev) == 0 {
 		return nil
 	}
-
-	s.close()
 	return <-prev
 }
 
@@ -152,12 +149,13 @@ func (s *Stream) FindFirst() interface{} {
 //
 // nil is returned when index is out of range
 func (s *Stream) Element(i int) interface{} {
+	defer s.close()
+
 	if i < 0 {
 		return nil
 	}
 
 	var counter int
-
 	prev := s.prevPipe()
 	for v := range prev {
 		if counter == i {
@@ -165,7 +163,5 @@ func (s *Stream) Element(i int) interface{} {
 		}
 		counter++
 	}
-
-	s.close()
 	return nil
 }

@@ -41,7 +41,7 @@ func Example_stream() {
 	// Output: to be or not ?
 }
 
-func Example_largeFile() {
+func _Example_largeFile() {
 	file := read()
 	for i := 0; i < 10; i++ {
 		// enlarge the testdata
