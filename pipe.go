@@ -1,6 +1,10 @@
 package streaming
 
-// returns previous pipe
+// prevPipe returns the previous pipe(buffered channel) in the pipeline.
+//
+// If the pipeline is empty, it will make a new channel and push elements
+// of slice to the new channel. After the slice elements all consumed,
+// the new channel will be closed.
 func (s *Stream) prevPipe() chan interface{} {
 	var ch chan interface{}
 	if len(s.pipeline) == 0 {
@@ -20,7 +24,8 @@ func (s *Stream) prevPipe() chan interface{} {
 	return ch
 }
 
-// returns current pipe
+// curPipe appends a new pipe(buffered channel) to the pipeline
+// and returns the new pipe.
 func (s *Stream) curPipe() chan interface{} {
 	cur := make(chan interface{}, defaultChanBufSize)
 	s.pipeline = append(s.pipeline, cur)
