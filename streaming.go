@@ -5,31 +5,29 @@ import (
 )
 
 const (
-	// default capacity of pipeline
+	// Default capacity of pipeline.
 	defaultPipelineCap = 16
 
-	// default capacity of each pipe(buffered channel) in pipeline
-	defaultChanBufSize = 1 << 10
+	// Default capacity of each pipe(buffered channel) in pipeline.
+	defaultChanBufSize = 1 << 10 // 1 KB
 )
 
 var (
-	// empty slice
 	emptySlice = make(Slice, 0)
 
-	// empty stream
 	emptyStream = &Stream{slice: emptySlice}
 )
 
-// Stream a sequence of elements supporting aggregate operations
+// Stream a sequence of elements supporting aggregate operations.
 //
-// To perform a computation, stream operations composed into a stream pipeline
+// To perform a computation, stream operations composed into a stream pipeline.
 type Stream struct {
 	pipeline []chan interface{} // pipeline channels
 	slice    Slicer             // which holds the elements to process
 	closed   bool               // to report sink-methods invoked
 }
 
-// newStream returns a new Stream
+// newStream returns a new Stream which wraps the given slice.
 func newStream(slice Slicer) *Stream {
 	if slice == nil {
 		return emptyStream
@@ -40,16 +38,16 @@ func newStream(slice Slicer) *Stream {
 	}
 }
 
-// Of wraps Slicer into Stream
+// Of wraps Slicer into Stream.
 //
-// Returns emptyStream when slicer is nil
+// Returns emptyStream when slicer is nil.
 func Of(slicer Slicer) *Stream {
 	return newStream(slicer)
 }
 
-// Stream closed check.
+// Validation check for Stream.
 //
-// It will panic when stream is closed
+// It will panic when Stream is closed.
 func (s *Stream) valid() {
 	if s.closed {
 		panic("stream has already been operated upon")
@@ -58,7 +56,7 @@ func (s *Stream) valid() {
 
 // Peek returns the same stream,
 // additionally performing the provided action on each element
-// as elements are consumed from the resulting stream
+// as elements are consumed from the resulting stream.
 func (s *Stream) Peek(act func(interface{})) *Stream {
 	s.valid()
 
@@ -149,7 +147,7 @@ func (s *Stream) Map(apply func(interface{}) interface{}) *Stream {
 }
 
 // FlatMap returns the same stream consisting of the results
-// of replacing each element
+// of replacing each element.
 func (s *Stream) FlatMap(apply func(interface{}) Slicer) *Stream {
 	s.valid()
 
@@ -193,11 +191,11 @@ func (s *Stream) Filter(predicate func(interface{}) bool) *Stream {
 	return s
 }
 
-// discards values in map
+// discards values in map.
 var discard struct{}
 
 // Distinct returns the same stream consisting of the distinct elements
-// with original order
+// with original order.
 func (s *Stream) Distinct() *Stream {
 	s.valid()
 
@@ -218,8 +216,8 @@ func (s *Stream) Distinct() *Stream {
 	return s
 }
 
-// Top returns the same stream consisting of n elements
-// that appear most often
+// Top returns the same stream consisting of CountVal pointers
+// of the n elements that appear most often.
 func (s *Stream) Top(n int) *Stream {
 	s.valid()
 
@@ -266,7 +264,7 @@ func (s *Stream) Top(n int) *Stream {
 	return s
 }
 
-// Copy returns a new stream
+// Copy returns a new stream that wraps the initial slice.
 func (s *Stream) Copy() *Stream {
 	return newStream(s.slice)
 }

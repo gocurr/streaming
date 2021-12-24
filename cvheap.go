@@ -1,12 +1,12 @@
 package streaming
 
-// CountVal wraps Count and Val
+// CountVal wraps Count and Val.
 type CountVal struct {
 	Count int
 	Val   interface{}
 }
 
-// A cvHeap is a max-heap of CountVals
+// A cvHeap is a max-heap of CountVals.
 type cvHeap []*CountVal
 
 func (h cvHeap) Len() int           { return len(h) }

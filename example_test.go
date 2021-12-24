@@ -44,11 +44,11 @@ func Example_stream() {
 func _Example_largeFile() {
 	file := read()
 	for i := 0; i < 10; i++ {
-		// enlarge the testdata
+		// Enlarge the testdata.
 		// size = original_size << 10 ≈ 550 MB
 		file = append(file, file...)
 	}
-	// about 1.5 GB memory cost in general
+	// About 1.5 GB memory cost in general.
 	handle(file)
 	// Output: to be or not ?
 }

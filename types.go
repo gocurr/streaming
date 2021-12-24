@@ -1,6 +1,6 @@
 package streaming
 
-// Ints integer slice
+// Ints integer slice.
 type Ints []int
 
 func (is Ints) Index(i int) interface{} {
@@ -11,7 +11,7 @@ func (is Ints) Len() int {
 	return len(is)
 }
 
-// Floats float slice
+// Floats float64 slice.
 type Floats []float64
 
 func (fs Floats) Index(i int) interface{} {
@@ -22,8 +22,7 @@ func (fs Floats) Len() int {
 	return len(fs)
 }
 
-// Strings string slice
-
+// Strings string slice.
 type Strings []string
 
 func (ss Strings) Index(i int) interface{} {
