@@ -33,7 +33,7 @@ func Test_Values(t *testing.T) {
 	s := Of(vs)
 
 	var got []interface{}
-	s.Copy().Map(func(i interface{}) interface{} {
+	s.Map(func(i interface{}) interface{} {
 		return (*i.(*Value)).val * 100
 	}).ForEach(func(i interface{}) {
 		collect(&got, i)
