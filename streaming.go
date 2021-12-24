@@ -230,19 +230,18 @@ func (s *Stream) Top(n int) *Stream {
 		return s
 	}
 
-	var memory = make(map[interface{}]int)
-
 	go func() {
+		var m = make(map[interface{}]int)
 		for v := range prev {
-			if _, ok := memory[v]; !ok {
-				memory[v] = 1
+			if _, ok := m[v]; !ok {
+				m[v] = 1
 			} else {
-				memory[v] += 1
+				m[v] += 1
 			}
 		}
 
 		var cvs cvHeap
-		for v, count := range memory {
+		for v, count := range m {
 			cvs = append(cvs, &CountVal{
 				Count: count,
 				Val:   v,
