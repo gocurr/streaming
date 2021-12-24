@@ -3,7 +3,7 @@ package streaming
 // prevPipe returns the previous pipe(buffered channel) in the pipeline.
 //
 // If the pipeline is empty, it will make a new channel and push elements
-// of slice to the new channel. After the slice elements all consumed,
+// of slice to the new channel (in a new goroutine). After the slice elements all consumed,
 // the new channel will be closed.
 func (s *Stream) prevPipe() chan interface{} {
 	var ch chan interface{}
