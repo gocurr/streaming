@@ -16,13 +16,13 @@ func read() []byte {
 	return file
 }
 func handle(file []byte) {
-	streaming.
-		Of(streaming.Strings{string(file)}).
+	lines := strings.Split(string(file), "\n")
+	stream := streaming.Of(streaming.Strings(lines))
+
+	stream.
 		FlatMap(func(i interface{}) streaming.Slicer {
-			return streaming.Strings(strings.Split(i.(string), "\n"))
-		}).
-		FlatMap(func(i interface{}) streaming.Slicer {
-			return streaming.Strings(strings.Split(i.(string), " "))
+			words := strings.Split(i.(string), " ")
+			return streaming.Strings(words)
 		}).
 		Filter(func(i interface{}) bool {
 			s := i.(string)
