@@ -22,27 +22,39 @@ var (
 //
 // To perform a computation, stream operations composed into a stream pipeline.
 type Stream struct {
-	pipeline []chan interface{} // pipeline channels
-	slice    Slicer             // which holds the elements to process
-	closed   bool               // to report sink-methods invoked
+	chanBufSize int                // size of buffered channel
+	pipeline    []chan interface{} // pipeline channels
+	slice       Slicer             // which holds the elements to process
+	closed      bool               // to report sink-methods invoked
 }
 
 // newStream returns a new Stream which wraps the given slice.
-func newStream(slice Slicer) *Stream {
+func newStream(slice Slicer, chanBufSize int) *Stream {
 	if slice == nil {
 		return emptyStream
 	}
 	return &Stream{
-		pipeline: make([]chan interface{}, 0, defaultPipelineCap),
-		slice:    slice,
+		chanBufSize: chanBufSize,
+		pipeline:    make([]chan interface{}, 0, defaultPipelineCap),
+		slice:       slice,
 	}
 }
 
-// Of wraps Slicer into Stream.
+// Of wraps Slicer into Stream with defaultChanBufSize.
 //
 // Returns emptyStream when slicer is nil.
 func Of(slicer Slicer) *Stream {
-	return newStream(slicer)
+	return newStream(slicer, defaultChanBufSize)
+}
+
+// OfWithChanBufSize wraps Slicer into Stream with the given chanBufSize.
+//
+// Returns emptyStream when slicer is nil.
+func OfWithChanBufSize(slicer Slicer, chanBufSize int) *Stream {
+	if chanBufSize <= 0 {
+		panic("OfWithChanBufSize: negative or 0 chanBufSize")
+	}
+	return newStream(slicer, chanBufSize)
 }
 
 // Validation check for Stream.
@@ -266,5 +278,5 @@ func (s *Stream) Top(n int) *Stream {
 
 // Copy returns a new stream that wraps the initial slice.
 func (s *Stream) Copy() *Stream {
-	return newStream(s.slice)
+	return newStream(s.slice, s.chanBufSize)
 }

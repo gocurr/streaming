@@ -27,7 +27,7 @@ func (s *Stream) prevPipe() chan interface{} {
 // curPipe appends a new pipe(buffered channel) to the pipeline
 // and returns the new pipe.
 func (s *Stream) curPipe() chan interface{} {
-	cur := make(chan interface{}, defaultChanBufSize)
+	cur := make(chan interface{}, s.chanBufSize)
 	s.pipeline = append(s.pipeline, cur)
 	return cur
 }

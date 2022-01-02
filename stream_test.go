@@ -24,48 +24,59 @@ func collect(got *[]interface{}, v interface{}) {
 	*got = append(*got, v)
 }
 
-func Test_Values(t *testing.T) {
+func Test_Values_Strings(t *testing.T) {
 	vs := Values{
 		&Value{val: 1},
 		&Value{val: 2},
 		&Value{val: 3},
 	}
-	s := Of(vs)
+	stream := Of(vs)
+	v(stream, t)
+	stream = OfWithChanBufSize(vs, 10)
+	v(stream, t)
 
+	words := Strings{"one", "two", "two", "three", "good go"}
+	stream = Of(words)
+	s(stream, t)
+	stream = OfWithChanBufSize(words, 10)
+	s(stream, t)
+}
+
+func v(stream *Stream, t *testing.T) {
 	var got []interface{}
-	s.Map(func(i interface{}) interface{} {
+	stream.Map(func(i interface{}) interface{} {
 		return (*i.(*Value)).val * 100
 	}).ForEach(func(i interface{}) {
 		collect(&got, i)
 	})
 
-	s.Copy().Filter(func(i interface{}) bool {
+	stream.Copy().Filter(func(i interface{}) bool {
 		return i.(*Value).val > 1
 	}).ForEach(func(i interface{}) {
 		collect(&got, i.(*Value).val)
 	})
 
-	collect(&got, s.Copy().Count())
+	collect(&got, stream.Copy().Count())
 
-	collect(&got, s.Copy().Sum(func(i interface{}) float64 {
+	collect(&got, stream.Copy().Sum(func(i interface{}) float64 {
 		return i.(*Value).val
 	}))
 
-	s.Copy().Limit(2).ForEach(func(i interface{}) {
+	stream.Copy().Limit(2).ForEach(func(i interface{}) {
 		collect(&got, i.(*Value).val)
 	})
 
-	s.Copy().Peek(func(i interface{}) {
+	stream.Copy().Peek(func(i interface{}) {
 		// do nothing
 	}).ForEach(func(i interface{}) {
 		collect(&got, i.(*Value).val)
 	})
 
-	s.Copy().Skip(2).ForEach(func(i interface{}) {
+	stream.Copy().Skip(2).ForEach(func(i interface{}) {
 		collect(&got, i.(*Value).val)
 	})
 
-	collect(&got, s.Copy().Element(1).(*Value).val)
+	collect(&got, stream.Copy().Element(1).(*Value).val)
 
 	var want = []interface{}{
 		100.0, 200.0, 300.0, // map * 100
@@ -82,22 +93,19 @@ func Test_Values(t *testing.T) {
 	}
 }
 
-func Test_Strings(t *testing.T) {
-	words := Strings{"one", "two", "two", "three", "good go"}
-	s := Of(words)
-
+func s(stream *Stream, t *testing.T) {
 	var got []interface{}
-	s.Distinct().ForEach(func(i interface{}) {
+	stream.Distinct().ForEach(func(i interface{}) {
 		collect(&got, i)
 	})
 
-	s.Copy().FlatMap(func(i interface{}) Slicer {
+	stream.Copy().FlatMap(func(i interface{}) Slicer {
 		return Strings(strings.Split(i.(string), " "))
 	}).ForEach(func(i interface{}) {
 		collect(&got, i)
 	})
 
-	s.Copy().Top(1).ForEach(func(i interface{}) {
+	stream.Copy().Top(1).ForEach(func(i interface{}) {
 		collect(&got, i.(*CountVal).Val)
 	})
 

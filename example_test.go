@@ -15,6 +15,7 @@ func read() []byte {
 	}
 	return file
 }
+
 func handle(file []byte) {
 	lines := strings.Split(string(file), "\n")
 	stream := streaming.Of(streaming.Strings(lines))
@@ -41,7 +42,7 @@ func Example_stream() {
 	// Output: to be or not ?
 }
 
-func _Example_largeFile() {
+func Example_largeFile() {
 	file := read()
 	for i := 0; i < 10; i++ {
 		// Enlarge the testdata.
