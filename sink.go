@@ -12,6 +12,9 @@ func (s *Stream) ForEach(act func(interface{})) {
 
 	prev := s.prevPipe()
 	for v := range prev {
+		if s.exceeded() {
+			break
+		}
 		act(v)
 	}
 }
@@ -164,6 +167,11 @@ func (s *Stream) FindFirst() interface{} {
 	if len(prev) == 0 {
 		return nil
 	}
+
+	if s.exceeded() {
+		return nil
+	}
+
 	return <-prev
 }
 

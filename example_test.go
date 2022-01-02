@@ -53,6 +53,6 @@ func Example_largeFile() {
 		file = append(file, file...)
 	}
 	// About 1.5 GB memory cost in general.
-	handle(file, &streaming.Option{Timeout: 1 * time.Second * 1})
+	handle(file, &streaming.Option{Timeout: 1 * time.Second})
 	// Output: ? false
 }
