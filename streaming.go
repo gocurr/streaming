@@ -2,6 +2,7 @@ package streaming
 
 import (
 	"container/heap"
+	"time"
 )
 
 const (
@@ -16,27 +17,51 @@ var (
 	emptySlice = make(Slice, 0)
 
 	emptyStream = &Stream{slice: emptySlice}
+
+	never = time.Duration(0) // never timeout
+
+	defaultOption = &Option{
+		ChanBufSize: defaultChanBufSize,
+		Timeout:     never,
+	}
 )
 
 // Stream a sequence of elements supporting aggregate operations.
 //
 // To perform a computation, stream operations composed into a stream pipeline.
 type Stream struct {
-	chanBufSize int                // size of buffered channel
-	pipeline    []chan interface{} // pipeline channels
-	slice       Slicer             // which holds the elements to process
-	closed      bool               // to report sink-methods invoked
+	pipeline []chan interface{} // pipeline channels
+	slice    Slicer             // which holds the elements to process
+	closed   bool               // to report sink-methods invoked
+
+	chanBufSize int       // size of buffered channel
+	deadline    time.Time // deadline to exceed
+
+	incorrect bool // reports whether the result is incorrect
+}
+
+// Option represents optional conditions.
+type Option struct {
+	ChanBufSize int           // size of buffered channel
+	Timeout     time.Duration // timeout to exceed
 }
 
 // newStream returns a new Stream which wraps the given slice.
-func newStream(slice Slicer, chanBufSize int) *Stream {
+func newStream(slice Slicer, op *Option) *Stream {
 	if slice == nil {
 		return emptyStream
 	}
+
+	var deadline time.Time
+	if op.Timeout > 0 {
+		deadline = time.Now().Add(op.Timeout)
+	}
+
 	return &Stream{
-		chanBufSize: chanBufSize,
+		chanBufSize: op.ChanBufSize,
 		pipeline:    make([]chan interface{}, 0, defaultPipelineCap),
 		slice:       slice,
+		deadline:    deadline,
 	}
 }
 
@@ -44,17 +69,30 @@ func newStream(slice Slicer, chanBufSize int) *Stream {
 //
 // Returns emptyStream when slicer is nil.
 func Of(slicer Slicer) *Stream {
-	return newStream(slicer, defaultChanBufSize)
+	return newStream(slicer, defaultOption)
 }
 
-// OfWithChanBufSize wraps Slicer into Stream with the given chanBufSize.
+// OfWithOption wraps Slicer into Stream with Option.
 //
 // Returns emptyStream when slicer is nil.
-func OfWithChanBufSize(slicer Slicer, chanBufSize int) *Stream {
-	if chanBufSize <= 0 {
-		panic("OfWithChanBufSize: negative or 0 chanBufSize")
+func OfWithOption(slicer Slicer, op *Option) *Stream {
+	if op == nil {
+		return Of(slicer)
 	}
-	return newStream(slicer, chanBufSize)
+
+	if op.ChanBufSize <= 0 {
+		op.ChanBufSize = defaultChanBufSize
+	}
+	return newStream(slicer, op)
+}
+
+// exceeded reports the deadline is exceeded.
+func (s *Stream) exceeded() bool {
+	timeout := !s.deadline.IsZero() && time.Now().After(s.deadline)
+	if timeout {
+		s.incorrect = true
+	}
+	return timeout
 }
 
 // Validation check for Stream.
@@ -78,6 +116,9 @@ func (s *Stream) Peek(act func(interface{})) *Stream {
 	go func() {
 		defer close(cur)
 		for v := range prev {
+			if s.exceeded() {
+				break
+			}
 			act(v)
 			cur <- v
 		}
@@ -98,6 +139,9 @@ func (s *Stream) Limit(n int) *Stream {
 		defer close(cur)
 		var counter int
 		for v := range prev {
+			if s.exceeded() {
+				break
+			}
 			if counter < n {
 				counter++
 				cur <- v
@@ -128,6 +172,9 @@ func (s *Stream) Skip(n int) *Stream {
 		defer close(cur)
 		var counter int
 		for v := range prev {
+			if s.exceeded() {
+				break
+			}
 			if counter < n {
 				counter++
 				continue
@@ -151,6 +198,9 @@ func (s *Stream) Map(apply func(interface{}) interface{}) *Stream {
 	go func() {
 		defer close(cur)
 		for v := range prev {
+			if s.exceeded() {
+				break
+			}
 			cur <- apply(v)
 		}
 	}()
@@ -169,11 +219,17 @@ func (s *Stream) FlatMap(apply func(interface{}) Slicer) *Stream {
 	go func() {
 		defer close(cur)
 		for v := range prev {
+			if s.exceeded() {
+				break
+			}
 			vv := apply(v)
 			if vv == nil {
 				continue
 			}
 			for i := 0; i < vv.Len(); i++ {
+				if s.exceeded() {
+					break
+				}
 				ele := vv.Index(i)
 				cur <- ele
 			}
@@ -194,6 +250,9 @@ func (s *Stream) Filter(predicate func(interface{}) bool) *Stream {
 	go func() {
 		defer close(cur)
 		for v := range prev {
+			if s.exceeded() {
+				break
+			}
 			if predicate(v) {
 				cur <- v
 			}
@@ -218,6 +277,9 @@ func (s *Stream) Distinct() *Stream {
 		defer close(cur)
 		var distinct = make(map[interface{}]struct{})
 		for v := range prev {
+			if s.exceeded() {
+				break
+			}
 			if _, ok := distinct[v]; !ok {
 				distinct[v] = discard
 				cur <- v
@@ -244,6 +306,9 @@ func (s *Stream) Top(n int) *Stream {
 		defer close(cur)
 		var m = make(map[interface{}]int)
 		for v := range prev {
+			if s.exceeded() {
+				break
+			}
 			if _, ok := m[v]; !ok {
 				m[v] = 1
 			} else {
@@ -253,6 +318,9 @@ func (s *Stream) Top(n int) *Stream {
 
 		var cvs cvHeap
 		for v, count := range m {
+			if s.exceeded() {
+				break
+			}
 			cvs = append(cvs, &CountVal{
 				Count: count,
 				Val:   v,
@@ -264,6 +332,9 @@ func (s *Stream) Top(n int) *Stream {
 
 		var counter int
 		for h.Len() != 0 {
+			if s.exceeded() {
+				break
+			}
 			cv := heap.Pop(h)
 			cur <- cv
 			if counter == n-1 {
@@ -278,5 +349,5 @@ func (s *Stream) Top(n int) *Stream {
 
 // Copy returns a new stream that wraps the initial slice.
 func (s *Stream) Copy() *Stream {
-	return newStream(s.slice, s.chanBufSize)
+	return Of(s.slice)
 }

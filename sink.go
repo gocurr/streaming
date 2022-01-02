@@ -29,6 +29,9 @@ func (s *Stream) Reduce(compare func(a, b interface{}) bool) interface{} {
 	}
 	t := <-prev
 	for v := range prev {
+		if s.exceeded() {
+			break
+		}
 		if compare(v, t) {
 			t = v
 		}
@@ -44,6 +47,9 @@ func (s *Stream) FilterCount(predicate func(interface{}) bool) int {
 	var c int
 	prev := s.prevPipe()
 	for v := range prev {
+		if s.exceeded() {
+			break
+		}
 		if predicate(v) {
 			c++
 		}
@@ -58,6 +64,9 @@ func (s *Stream) Collect() Slicer {
 	var slice Slice
 	prev := s.prevPipe()
 	for v := range prev {
+		if s.exceeded() {
+			break
+		}
 		slice = append(slice, v)
 	}
 	return slice
@@ -69,6 +78,9 @@ func (s *Stream) Count() int {
 
 	var counter int
 	for range s.prevPipe() {
+		if s.exceeded() {
+			break
+		}
 		counter++
 	}
 	return counter
@@ -87,6 +99,9 @@ func (s *Stream) Sum(sum func(interface{}) float64) float64 {
 	var r float64
 	prev := s.prevPipe()
 	for v := range prev {
+		if s.exceeded() {
+			break
+		}
 		r += sum(v)
 	}
 	return r
@@ -101,6 +116,9 @@ func (s *Stream) AnyMatch(predicate func(interface{}) bool) bool {
 
 	prev := s.prevPipe()
 	for v := range prev {
+		if s.exceeded() {
+			break
+		}
 		if predicate(v) {
 			return true
 		}
@@ -117,6 +135,9 @@ func (s *Stream) AllMatch(predicate func(interface{}) bool) bool {
 
 	prev := s.prevPipe()
 	for v := range prev {
+		if s.exceeded() {
+			break
+		}
 		if predicate(v) {
 			continue
 		}
@@ -159,10 +180,23 @@ func (s *Stream) Element(i int) interface{} {
 	var counter int
 	prev := s.prevPipe()
 	for v := range prev {
+		if s.exceeded() {
+			break
+		}
 		if counter == i {
 			return v
 		}
 		counter++
 	}
 	return nil
+}
+
+// Correct reports whether the result is correct.
+func (s *Stream) Correct() bool {
+	defer s.close()
+
+	prev := s.prevPipe()
+	for range prev {
+	}
+	return !s.incorrect
 }

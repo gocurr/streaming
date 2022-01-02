@@ -15,6 +15,9 @@ func (s *Stream) prevPipe() chan interface{} {
 		go func() {
 			defer close(ch)
 			for i := 1; i < s.slice.Len(); i++ {
+				if s.exceeded() {
+					break
+				}
 				ch <- s.slice.Index(i)
 			}
 		}()

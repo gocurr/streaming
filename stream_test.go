@@ -32,13 +32,13 @@ func Test_Values_Strings(t *testing.T) {
 	}
 	stream := Of(vs)
 	v(stream, t)
-	stream = OfWithChanBufSize(vs, 10)
+	stream = OfWithOption(vs, &Option{ChanBufSize: 10})
 	v(stream, t)
 
 	words := Strings{"one", "two", "two", "three", "good go"}
 	stream = Of(words)
 	s(stream, t)
-	stream = OfWithChanBufSize(words, 10)
+	stream = OfWithOption(words, &Option{ChanBufSize: 10, Timeout: -1})
 	s(stream, t)
 }
 
