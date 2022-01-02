@@ -9,19 +9,20 @@ import (
 	"time"
 )
 
-func read() []byte {
+func slicer(shift int) streaming.Slicer {
 	file, err := ioutil.ReadFile("testdata/Isaac.Newton-Opticks.txt")
 	if err != nil {
 		log.Fatalln(err)
 	}
-	return file
+	for i := 0; i < shift; i++ {
+		// Enlarge the testdata.
+		file = append(file, file...)
+	}
+	lines := strings.Split(string(file), "\n")
+	return streaming.Strings(lines)
 }
 
-func handle(file []byte, op *streaming.Option) {
-	lines := strings.Split(string(file), "\n")
-	slicer := streaming.Strings(lines)
-	stream := streaming.OfWithOption(slicer, op)
-
+func handle(stream *streaming.Stream) {
 	top := stream.
 		FlatMap(func(i interface{}) streaming.Slicer {
 			words := strings.Split(i.(string), " ")
@@ -41,18 +42,25 @@ func handle(file []byte, op *streaming.Option) {
 }
 
 func Example_stream() {
-	handle(read(), nil)
+	stream := streaming.Of(slicer(0))
+	handle(stream)
 	// Output: to be or not ? true
 }
 
-func Example_largeFile() {
-	file := read()
-	for i := 0; i < 10; i++ {
-		// Enlarge the testdata.
-		// size = original_size << 10 ≈ 550 MB
-		file = append(file, file...)
-	}
-	// About 1.5 GB memory cost in general.
-	handle(file, &streaming.Option{Timeout: 1 * time.Second})
+func Example_largeFile_Correct() {
+	stream := streaming.OfWithOption(slicer(10), &streaming.Option{
+		ChanBufSize: 1 << 20,
+		Timeout:     25 * time.Second},
+	)
+	handle(stream)
+	// Output: to be or not ? true
+}
+
+func Example_largeFile_Incorrect() {
+	stream := streaming.OfWithOption(slicer(10), &streaming.Option{
+		ChanBufSize: 1 << 10,
+		Timeout:     1 * time.Second},
+	)
+	handle(stream)
 	// Output: ? false
 }
