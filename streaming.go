@@ -32,11 +32,11 @@ var (
 type Stream struct {
 	pipeline []chan interface{} // pipeline channels
 	slice    Slicer             // which holds the elements to process
-	closed   bool               // to report sink-methods invoked
 
 	chanBufSize int       // size of buffered channel
 	deadline    time.Time // deadline to exceed
 
+	closed    bool // reports whether sink-methods invoked
 	incorrect bool // reports whether the result is incorrect
 }
 
@@ -86,8 +86,11 @@ func OfWithOption(slicer Slicer, op *Option) *Stream {
 	return newStream(slicer, op)
 }
 
-// exceeded reports the deadline is exceeded.
+// exceeded reports the Stream is closed or deadline is exceeded.
 func (s *Stream) exceeded() bool {
+	if s.closed {
+		return true
+	}
 	timeout := !s.deadline.IsZero() && time.Now().After(s.deadline)
 	if timeout {
 		s.incorrect = true
