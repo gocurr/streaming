@@ -201,10 +201,5 @@ func (s *Stream) Element(i int) interface{} {
 
 // Correct reports whether the result is correct.
 func (s *Stream) Correct() bool {
-	defer s.close()
-
-	prev := s.prevPipe()
-	for range prev {
-	}
 	return !s.incorrect
 }
