@@ -2,6 +2,7 @@ package streaming
 
 import (
 	"container/heap"
+	"sync"
 	"time"
 )
 
@@ -36,8 +37,10 @@ type Stream struct {
 	chanBufSize int       // size of buffered channel
 	deadline    time.Time // deadline to exceed
 
-	closed    bool // reports whether sink-methods invoked
-	incorrect bool // reports whether the result is incorrect
+	closed bool // reports whether sink-methods invoked
+
+	once      sync.Once // to set incorrect
+	incorrect bool      // reports whether the result is incorrect
 }
 
 // Option represents optional conditions.
@@ -53,7 +56,7 @@ func newStream(slice Slicer, op *Option) *Stream {
 	}
 
 	var deadline time.Time
-	if op.Timeout > 0 {
+	if op.Timeout != 0 {
 		deadline = time.Now().Add(op.Timeout)
 	}
 
@@ -69,7 +72,7 @@ func newStream(slice Slicer, op *Option) *Stream {
 //
 // Returns emptyStream when slicer is nil.
 func Of(slicer Slicer) *Stream {
-	return newStream(slicer, defaultOption)
+	return OfWithOption(slicer, defaultOption)
 }
 
 // OfWithOption wraps Slicer into Stream with Option.
@@ -77,23 +80,25 @@ func Of(slicer Slicer) *Stream {
 // Returns emptyStream when slicer is nil.
 func OfWithOption(slicer Slicer, op *Option) *Stream {
 	if op == nil {
-		return Of(slicer)
+		panic("OfWithOption: nil Option")
 	}
 
 	if op.ChanBufSize <= 0 {
-		op.ChanBufSize = defaultChanBufSize
+		panic("OfWithOption: non-positive ChanBufSize")
 	}
 	return newStream(slicer, op)
 }
 
 // exceeded reports the Stream is closed or deadline is exceeded.
 func (s *Stream) exceeded() bool {
-	if s.closed {
+	if s.closed || s.incorrect {
 		return true
 	}
 	timeout := !s.deadline.IsZero() && time.Now().After(s.deadline)
 	if timeout {
-		s.incorrect = true
+		s.once.Do(func() {
+			s.incorrect = true
+		})
 	}
 	return timeout
 }
