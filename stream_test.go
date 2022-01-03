@@ -109,10 +109,31 @@ func s(stream *Stream, t *testing.T) {
 		collect(&got, i.(*CountVal).Val)
 	})
 
+	allMatch := stream.Copy().AllMatch(func(i interface{}) bool {
+		w := i.(string)
+		return len(w) > 3
+	})
+	collect(&got, allMatch)
+
+	nonMatch := stream.Copy().NonMatch(func(i interface{}) bool {
+		w := i.(string)
+		return w == "two"
+	})
+	collect(&got, nonMatch)
+
+	anyMatch := stream.Copy().AnyMatch(func(i interface{}) bool {
+		w := i.(string)
+		return w == "two"
+	})
+	collect(&got, anyMatch)
+
 	var want = []interface{}{
 		"one", "two", "three", "good go", // distinct
 		"one", "two", "two", "three", "good", "go", // flatmap
 		"two", // top 1
+		false, // allMatch
+		false, // nonMatch
+		true,  // anyMatch
 	}
 	if !reflect.DeepEqual(want, got) {
 		t.Fatalf("got %v, want %v", got, want)

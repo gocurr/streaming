@@ -154,7 +154,7 @@ func (s *Stream) AllMatch(predicate func(interface{}) bool) bool {
 // on all elements if not necessary for determining the result.
 // If the stream is empty then true is returned and the predicate is not evaluated.
 func (s *Stream) NonMatch(predicate func(interface{}) bool) bool {
-	return !s.AllMatch(predicate)
+	return !s.AnyMatch(predicate)
 }
 
 // FindFirst returns the first element of the stream.
