@@ -4,6 +4,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 )
 
 type Value struct {
@@ -38,7 +39,7 @@ func Test_Values_Strings(t *testing.T) {
 	words := Strings{"one", "two", "two", "three", "good go"}
 	stream = Of(words)
 	s(stream, t)
-	stream = OfWithOption(words, &Option{ChanBufSize: 10, Timeout: -1})
+	stream = OfWithOption(words, &Option{ChanBufSize: 10, Timeout: 1 * time.Second})
 	s(stream, t)
 }
 
