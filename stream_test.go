@@ -128,6 +128,9 @@ func s(stream *Stream, t *testing.T) {
 	})
 	collect(&got, anyMatch)
 
+	first := stream.Copy().FindFirst()
+	collect(&got, first)
+
 	var want = []interface{}{
 		"one", "two", "three", "good go", // distinct
 		"one", "two", "two", "three", "good", "go", // flatmap
@@ -135,6 +138,7 @@ func s(stream *Stream, t *testing.T) {
 		false, // allMatch
 		false, // nonMatch
 		true,  // anyMatch
+		"one", // findFirst
 	}
 	if !reflect.DeepEqual(want, got) {
 		t.Fatalf("got %v, want %v", got, want)

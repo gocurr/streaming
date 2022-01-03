@@ -161,18 +161,7 @@ func (s *Stream) NonMatch(predicate func(interface{}) bool) bool {
 //
 // nil is returned when the stream is empty.
 func (s *Stream) FindFirst() interface{} {
-	defer s.close()
-
-	prev := s.prevPipe()
-	if len(prev) == 0 {
-		return nil
-	}
-
-	if s.exceeded() {
-		return nil
-	}
-
-	return <-prev
+	return s.Element(0)
 }
 
 // Element returns the element at the specified position in this stream.
