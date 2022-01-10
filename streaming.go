@@ -100,7 +100,9 @@ func (s *Stream) exceeded() bool {
 	timeout := !s.deadline.IsZero() && time.Now().After(s.deadline)
 	if timeout {
 		s.mu.Lock()
-		s.incorrect = true
+		if !s.incorrect {
+			s.incorrect = true
+		}
 		s.mu.Unlock()
 	}
 	return timeout

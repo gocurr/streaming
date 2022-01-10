@@ -4,7 +4,9 @@ package streaming
 // the stream has already been operated upon.
 func (s *Stream) close() {
 	s.mu.Lock()
-	s.closed = true
+	if !s.closed {
+		s.closed = true
+	}
 	s.mu.Unlock()
 }
 
