@@ -3,7 +3,9 @@ package streaming
 // close sets closed true to tell that
 // the stream has already been operated upon.
 func (s *Stream) close() {
+	s.mu.Lock()
 	s.closed = true
+	s.mu.Unlock()
 }
 
 // ForEach performs an action for each element.
@@ -190,5 +192,7 @@ func (s *Stream) Element(i int) interface{} {
 
 // Correct reports whether the result is correct.
 func (s *Stream) Correct() bool {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 	return !s.incorrect
 }

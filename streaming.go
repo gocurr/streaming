@@ -37,10 +37,9 @@ type Stream struct {
 	chanBufSize int       // size of buffered channel
 	deadline    time.Time // deadline to exceed
 
-	closed bool // reports whether sink-methods invoked
-
-	once      sync.Once // to set incorrect
-	incorrect bool      // reports whether the result is incorrect
+	mu        sync.RWMutex // guards the following
+	closed    bool         // reports whether sink-methods invoked
+	incorrect bool         // reports whether the result is incorrect
 }
 
 // Option represents optional conditions.
@@ -91,14 +90,18 @@ func OfWithOption(slicer Slicer, op *Option) *Stream {
 
 // exceeded reports the Stream is closed or deadline is exceeded.
 func (s *Stream) exceeded() bool {
+	s.mu.RLock()
 	if s.closed || s.incorrect {
+		s.mu.RUnlock()
 		return true
 	}
+	s.mu.RUnlock()
+
 	timeout := !s.deadline.IsZero() && time.Now().After(s.deadline)
 	if timeout {
-		s.once.Do(func() {
-			s.incorrect = true
-		})
+		s.mu.Lock()
+		s.incorrect = true
+		s.mu.Unlock()
 	}
 	return timeout
 }
@@ -107,6 +110,8 @@ func (s *Stream) exceeded() bool {
 //
 // It will panic when Stream is closed.
 func (s *Stream) valid() {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 	if s.closed {
 		panic("stream has already been operated upon")
 	}

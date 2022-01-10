@@ -48,10 +48,7 @@ func Example_stream() {
 }
 
 func Example_largeFile_Correct() {
-	stream := streaming.OfWithOption(slicer(10), &streaming.Option{
-		ChanBufSize: 1 << 20,
-		Timeout:     25 * time.Second},
-	)
+	stream := streaming.Of(slicer(10))
 	handle(stream)
 	// Output: to be or not ? true
 }
